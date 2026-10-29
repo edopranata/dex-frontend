@@ -51,6 +51,9 @@ const aiStatus = ref<AiStatus | null>(null)
 const form = reactive<Record<string, unknown>>({})
 const saving = ref<string | null>(null)
 const testing = ref(false)
+const telegramBusy = ref<'chats' | 'test' | null>(null)
+const telegramChats = ref<{ bot: { username: string; name: string }; chats: { id: string; type: string; title: string }[] } | null>(null)
+const telegramResult = ref<{ ok: boolean; bot: { username: string } | null; error: string | null } | null>(null)
 const aiResult = ref<{ ok: boolean; provider: string | null; model: string | null; latency_ms: number | null; error: string | null } | null>(null)
 
 function fill(data: SettingsResponse) {
@@ -120,6 +123,39 @@ async function testAi() {
   }
 }
 
+async function findTelegramChats() {
+  telegramBusy.value = 'chats'
+  telegramResult.value = null
+  try {
+    const { data } = await api.post('/admin/telegram/chats')
+    telegramChats.value = data
+    if (!data.chats.length) toast.info('Belum ada chat', `Kirim /start ke @${data.bot.username} di Telegram, lalu klik lagi.`)
+  } catch (error) {
+    telegramChats.value = null
+    toast.error('Gagal membaca chat', errorMessage(error))
+  } finally {
+    telegramBusy.value = null
+  }
+}
+
+function useChat(id: string) {
+  form['market.telegram.chat_id'] = id
+  toast.info('Chat ID dipilih', 'Klik Simpan untuk memakainya.')
+}
+
+async function testTelegram() {
+  telegramBusy.value = 'test'
+  telegramResult.value = null
+  try {
+    const { data } = await api.post('/admin/telegram/test')
+    telegramResult.value = data
+  } catch (error) {
+    toast.error('Tes Telegram gagal', errorMessage(error))
+  } finally {
+    telegramBusy.value = null
+  }
+}
+
 function when(iso: string | null): string {
   if (!iso) return 'belum pernah'
   return new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -145,6 +181,14 @@ function display(value: unknown): string {
         <button v-if="group.key === 'ai'" type="button" class="btn-ghost text-xs" :disabled="testing" @click="testAi">
           {{ testing ? 'Menguji…' : 'Tes koneksi AI' }}
         </button>
+        <div v-if="group.key === 'telegram'" class="flex gap-2">
+          <button type="button" class="btn-ghost text-xs" :disabled="telegramBusy !== null" @click="findTelegramChats">
+            {{ telegramBusy === 'chats' ? 'Mencari…' : 'Cari chat ID' }}
+          </button>
+          <button type="button" class="btn-ghost text-xs" :disabled="telegramBusy !== null" @click="testTelegram">
+            {{ telegramBusy === 'test' ? 'Mengirim…' : 'Kirim pesan tes' }}
+          </button>
+        </div>
       </div>
 
       <div v-if="group.key === 'ai' && aiStatus" class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg bg-panel-2/60 px-3 py-2 text-xs">
@@ -166,6 +210,34 @@ function display(value: unknown): string {
         >
           <template v-if="aiResult.ok">AI merespons: {{ aiResult.provider }} / {{ aiResult.model }} dalam {{ aiResult.latency_ms }} ms.</template>
           <template v-else>Gagal ({{ aiResult.provider ?? 'nonaktif' }}): {{ aiResult.error }}</template>
+        </div>
+      </Transition>
+
+      <Transition name="drop">
+        <div v-if="group.key === 'telegram' && telegramChats" class="mt-3 rounded-lg border border-line p-3 text-sm">
+          <p class="text-xs text-muted">
+            Bot <span class="text-text">@{{ telegramChats.bot.username }}</span>.
+            {{ telegramChats.chats.length ? 'Chat yang baru mengirim pesan ke bot:' : `Belum ada chat — kirim /start ke @${telegramChats.bot.username}, lalu klik "Cari chat ID" lagi.` }}
+          </p>
+          <ul v-if="telegramChats.chats.length" class="mt-2 space-y-1">
+            <li v-for="chat in telegramChats.chats" :key="chat.id" class="flex items-center justify-between gap-3 rounded bg-panel-2/60 px-2 py-1.5">
+              <span>{{ chat.title }} <span class="text-xs text-muted">· {{ chat.type }} · <span class="num">{{ chat.id }}</span></span></span>
+              <button type="button" class="text-xs text-brand hover:underline" :disabled="form['market.telegram.chat_id'] === chat.id" @click="useChat(chat.id)">
+                {{ form['market.telegram.chat_id'] === chat.id ? 'Dipilih' : 'Pakai' }}
+              </button>
+            </li>
+          </ul>
+        </div>
+      </Transition>
+
+      <Transition name="drop">
+        <div
+          v-if="group.key === 'telegram' && telegramResult"
+          class="mt-3 rounded-lg border p-3 text-sm"
+          :class="telegramResult.ok ? 'border-up/40 bg-up/5 text-up' : 'border-down/40 bg-down/5 text-down'"
+        >
+          <template v-if="telegramResult.ok">Pesan tes terkirim lewat @{{ telegramResult.bot?.username }}. Cek Telegram Anda.</template>
+          <template v-else>Gagal: {{ telegramResult.error }}</template>
         </div>
       </Transition>
 

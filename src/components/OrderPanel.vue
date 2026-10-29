@@ -2,10 +2,10 @@
 import { computed, ref, watch } from 'vue'
 import { api, errorMessage } from '@/lib/api'
 import { pct, price, qty, usd } from '@/lib/format'
-import type { Order, OrderType, Side, Token } from '@/lib/types'
+import type { Levels, Order, OrderType, Side, Token } from '@/lib/types'
 import { useToastStore } from '@/stores/toast'
 
-const props = defineProps<{ token: Token; balance: number; positionQuantity: number }>()
+const props = defineProps<{ token: Token; balance: number; positionQuantity: number; levels?: Levels | null }>()
 const emit = defineEmits<{ placed: [order: Order] }>()
 const toast = useToastStore()
 
@@ -16,6 +16,9 @@ const type = ref<OrderType>('market')
 const amountUsd = ref<number | null>(100)
 const quantity = ref<number | null>(null)
 const triggerPrice = ref<number | null>(null)
+const withExits = ref(false)
+const takeProfit = ref<number | null>(null)
+const stopLoss = ref<number | null>(null)
 const submitting = ref(false)
 const message = ref<{ ok: boolean; text: string } | null>(null)
 
@@ -41,6 +44,40 @@ watch(side, () => {
 watch(type, (value) => {
   triggerPrice.value = value === 'market' ? null : props.token.price_usd
 })
+
+/** Price the buy is expected to fill at: the limit price, or the current price for market orders. */
+const entryPrice = computed(() => (type.value === 'market' ? props.token.price_usd : triggerPrice.value) ?? null)
+
+function setExit(target: 'tp' | 'sl', percent: number) {
+  if (!entryPrice.value) return
+  const value = Number((entryPrice.value * (1 + percent / 100)).toPrecision(6))
+  if (target === 'tp') takeProfit.value = value
+  else stopLoss.value = value
+}
+
+function useAnalysisLevels() {
+  if (!props.levels) return
+  takeProfit.value = props.levels.take_profit_1
+  stopLoss.value = props.levels.stop_loss
+}
+
+/** Distance from entry and the estimated result (after both swap fees) if the exit is hit. */
+function exitInfo(exitPrice: number | null) {
+  if (!exitPrice || !entryPrice.value || !estimate.value) return null
+  const percent = (exitPrice / entryPrice.value - 1) * 100
+  const proceeds = estimate.value.quantity * exitPrice * (1 - FEE_RATE)
+  return { percent, pnl: proceeds - (amountUsd.value ?? 0) }
+}
+
+const tpInfo = computed(() => exitInfo(takeProfit.value))
+const slInfo = computed(() => exitInfo(stopLoss.value))
+const exitError = computed(() => {
+  if (!withExits.value || !entryPrice.value) return null
+  if (stopLoss.value && stopLoss.value >= entryPrice.value) return 'Stop loss harus di bawah harga entry.'
+  if (takeProfit.value && takeProfit.value <= entryPrice.value) return 'Take profit harus di atas harga entry.'
+  return null
+})
+const riskReward = computed(() => (tpInfo.value && slInfo.value && slInfo.value.pnl < 0 ? tpInfo.value.pnl / -slInfo.value.pnl : null))
 
 /** Constant-product price impact, mirroring the backend simulator. */
 const estimate = computed(() => {
@@ -79,13 +116,16 @@ async function submit() {
       amount_usd: side.value === 'buy' ? amountUsd.value : null,
       quantity: side.value === 'sell' ? quantity.value : null,
       trigger_price: type.value === 'market' ? null : triggerPrice.value,
+      take_profit_price: side.value === 'buy' && withExits.value ? takeProfit.value : null,
+      stop_loss_price: side.value === 'buy' && withExits.value ? stopLoss.value : null,
     })
     const order = data.data
+    const exits = [order.take_profit_price && `TP ${price(order.take_profit_price)}`, order.stop_loss_price && `SL ${price(order.stop_loss_price)}`].filter(Boolean).join(' · ')
     message.value =
       order.status === 'filled'
-        ? { ok: true, text: `Terisi ${qty(order.filled_quantity)} ${props.token.symbol} @ ${price(order.filled_price)}` }
+        ? { ok: true, text: `Terisi ${qty(order.filled_quantity)} ${props.token.symbol} @ ${price(order.filled_price)}${exits ? ` — ${exits} terpasang` : ''}` }
         : order.status === 'pending'
-          ? { ok: true, text: 'Order pending dibuat. Akan dieksekusi saat harga tercapai.' }
+          ? { ok: true, text: `Order pending dibuat. Akan dieksekusi saat harga tercapai${exits ? `, lalu ${exits} dipasang otomatis` : ''}.` }
           : { ok: false, text: order.note ?? 'Order ditolak.' }
     if (message.value.ok) toast.success(order.status === 'filled' ? 'Order terisi' : 'Order pending dibuat', message.value.text)
     else toast.error('Order ditolak', message.value.text)
@@ -144,6 +184,49 @@ async function submit() {
         <button v-for="f in [0.1, 0.25, 0.5, 1]" :key="f" type="button" class="btn-ghost py-1 text-xs" @click="setFraction(f)">{{ f * 100 }}%</button>
       </div>
 
+      <!-- Optional TP/SL attached to the buy (one cancels the other once placed) -->
+      <div v-if="side === 'buy'" class="rounded-lg border border-line p-3">
+        <label class="flex cursor-pointer items-center justify-between gap-2 text-sm">
+          <span>TP/SL <span class="text-xs text-muted">(opsional)</span></span>
+          <input v-model="withExits" type="checkbox" class="h-4 w-4 p-0" />
+        </label>
+        <Transition name="drop">
+          <div v-if="withExits" class="mt-3 space-y-3">
+            <p class="text-[11px] text-muted">
+              Dipasang otomatis saat order beli terisi, untuk jumlah yang dibeli. Jika salah satu terisi, yang lain dibatalkan (OCO).
+            </p>
+            <button v-if="levels" type="button" class="text-xs text-brand hover:underline" @click="useAnalysisLevels">
+              Pakai level analisis (TP1 {{ price(levels.take_profit_1) }} · SL {{ price(levels.stop_loss) }})
+            </button>
+
+            <label class="block">
+              <span class="mb-1 flex justify-between text-xs text-muted">
+                <span>Take profit (USD)</span>
+                <span v-if="tpInfo" class="num text-up">{{ pct(tpInfo.percent) }} · ≈ {{ usd(tpInfo.pnl) }}</span>
+              </span>
+              <input v-model.number="takeProfit" type="number" step="any" min="0" class="num w-full" placeholder="Kosongkan jika tidak dipakai" />
+              <span class="mt-1 grid grid-cols-4 gap-1">
+                <button v-for="p in [10, 25, 50, 100]" :key="p" type="button" class="btn-ghost py-0.5 text-[11px]" @click="setExit('tp', p)">+{{ p }}%</button>
+              </span>
+            </label>
+
+            <label class="block">
+              <span class="mb-1 flex justify-between text-xs text-muted">
+                <span>Stop loss (USD)</span>
+                <span v-if="slInfo" class="num text-down">{{ pct(slInfo.percent) }} · ≈ {{ usd(slInfo.pnl) }}</span>
+              </span>
+              <input v-model.number="stopLoss" type="number" step="any" min="0" class="num w-full" placeholder="Kosongkan jika tidak dipakai" />
+              <span class="mt-1 grid grid-cols-4 gap-1">
+                <button v-for="p in [5, 10, 15, 25]" :key="p" type="button" class="btn-ghost py-0.5 text-[11px]" @click="setExit('sl', -p)">-{{ p }}%</button>
+              </span>
+            </label>
+
+            <p v-if="riskReward" class="text-xs text-muted">Risk : reward ≈ <span class="num text-text">1 : {{ riskReward.toFixed(2) }}</span></p>
+            <p v-if="exitError" class="text-xs text-down">{{ exitError }}</p>
+          </div>
+        </Transition>
+      </div>
+
       <dl v-if="estimate" class="space-y-1 rounded-lg bg-panel-2 p-3 text-xs">
         <div class="flex justify-between"><dt class="text-muted">Estimasi harga isi</dt><dd class="num">{{ price(estimate.fillPrice) }}</dd></div>
         <div class="flex justify-between"><dt class="text-muted">Estimasi {{ side === 'buy' ? 'diterima' : 'dijual' }}</dt><dd class="num">{{ qty(estimate.quantity) }} {{ token.symbol }}</dd></div>
@@ -156,7 +239,7 @@ async function submit() {
       </dl>
       <p v-if="estimate && estimate.impact > 0.02" class="text-xs text-down">Price impact di atas 2%: likuiditas pool tipis untuk ukuran order ini.</p>
 
-      <button type="submit" class="w-full" :class="side === 'buy' ? 'btn-buy' : 'btn-sell'" :disabled="submitting || (side === 'sell' && positionQuantity <= 0)">
+      <button type="submit" class="w-full" :class="side === 'buy' ? 'btn-buy' : 'btn-sell'" :disabled="submitting || (side === 'sell' && positionQuantity <= 0) || !!exitError">
         {{ submitting ? 'Memproses…' : `${side === 'buy' ? 'Beli' : 'Jual'} ${token.symbol}` }}
       </button>
 

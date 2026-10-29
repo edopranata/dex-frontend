@@ -204,7 +204,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
       </div>
 
       <div class="min-w-0 space-y-6">
-        <OrderPanel :token="token" :balance="auth.user?.balance_usd ?? 0" :position-quantity="position?.quantity ?? 0" @placed="afterTrade" />
+        <OrderPanel :token="token" :balance="auth.user?.balance_usd ?? 0" :position-quantity="position?.quantity ?? 0" :levels="signal ?? analysis?.levels" @placed="afterTrade" />
 
         <div v-if="position" class="card p-4 text-sm">
           <div class="card-title">Posisi Anda</div>

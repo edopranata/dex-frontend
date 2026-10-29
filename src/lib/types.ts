@@ -140,12 +140,15 @@ export interface Order {
   id: number
   token_id: number
   signal_id: number | null
+  parent_id: number | null
   side: Side
   type: OrderType
   status: OrderStatus
   amount_usd: number | null
   quantity: number | null
   trigger_price: number | null
+  take_profit_price: number | null
+  stop_loss_price: number | null
   filled_price: number | null
   filled_quantity: number | null
   total_usd: number | null

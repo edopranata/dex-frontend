@@ -1,0 +1,23 @@
+<script setup lang="ts">
+import AnimatedNumber from './AnimatedNumber.vue'
+
+defineProps<{
+  label: string
+  value?: string
+  amount?: number | null
+  format?: (value: number | null) => string
+  hint?: string
+  tone?: 'up' | 'down' | 'muted'
+}>()
+</script>
+
+<template>
+  <div class="card card-hover animate-fade-up p-4">
+    <div class="card-title">{{ label }}</div>
+    <div class="num mt-2 text-xl font-semibold transition-colors duration-500" :class="{ 'text-up': tone === 'up', 'text-down': tone === 'down' }">
+      <AnimatedNumber v-if="format" :value="amount" :format="format" />
+      <template v-else>{{ value }}</template>
+    </div>
+    <div v-if="hint" class="mt-1 text-xs text-muted">{{ hint }}</div>
+  </div>
+</template>

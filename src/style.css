@@ -1,0 +1,258 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-bg: #0b1018;
+  --color-panel: #121925;
+  --color-panel-2: #182131;
+  --color-line: #243044;
+  --color-muted: #8391a7;
+  --color-text: #e6ebf2;
+  --color-up: #22c55e;
+  --color-down: #ef4444;
+  --color-warn: #f59e0b;
+  --color-brand: #3b82f6;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-fade-up: fade-up 0.45s var(--ease-out-soft) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-flash-up: flash-up 0.9s ease-out;
+  --animate-flash-down: flash-down 0.9s ease-out;
+  --animate-live: live 1.8s ease-in-out infinite;
+  --animate-glow: glow 2.4s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+
+  @keyframes flash-up {
+    0% {
+      background-color: rgb(34 197 94 / 0.35);
+      color: #4ade80;
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  @keyframes flash-down {
+    0% {
+      background-color: rgb(239 68 68 / 0.35);
+      color: #f87171;
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  @keyframes live {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.35;
+      transform: scale(0.8);
+    }
+  }
+
+  @keyframes glow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(34 197 94 / 0);
+    }
+    50% {
+      box-shadow: 0 0 12px 1px rgb(34 197 94 / 0.35);
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+  }
+
+  input,
+  select {
+    @apply rounded-lg border border-line bg-panel-2 px-3 py-2 text-sm text-text outline-none placeholder:text-muted focus:border-brand;
+  }
+}
+
+@utility card {
+  @apply rounded-xl border border-line bg-panel;
+}
+
+@utility card-title {
+  @apply text-xs font-semibold tracking-wider text-muted uppercase;
+}
+
+@utility num {
+  @apply font-mono tabular-nums;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+}
+
+@utility card-hover {
+  @apply transition duration-200 hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-lg hover:shadow-black/30;
+}
+
+@utility skeleton {
+  @apply animate-shimmer rounded-md bg-[linear-gradient(90deg,var(--color-panel-2)_25%,#22304a_50%,var(--color-panel-2)_75%)] bg-[length:200%_100%];
+}
+
+@utility btn-primary {
+  @apply btn bg-brand text-white hover:bg-blue-500;
+}
+
+@utility btn-ghost {
+  @apply btn border border-line text-text hover:bg-panel-2;
+}
+
+@utility btn-buy {
+  @apply btn bg-up text-black hover:bg-green-400;
+}
+
+@utility btn-sell {
+  @apply btn bg-down text-white hover:bg-red-400;
+}
+
+@layer components {
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table th {
+    @apply px-3 py-2 text-left text-xs font-medium text-muted;
+  }
+
+  .table td {
+    @apply border-t border-line px-3 py-2;
+  }
+}
+
+/* Route transition */
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity 0.22s var(--ease-out-soft),
+    transform 0.22s var(--ease-out-soft);
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* Lists: new rows slide in, reordered rows glide */
+.row-enter-active {
+  transition:
+    opacity 0.4s var(--ease-out-soft),
+    transform 0.4s var(--ease-out-soft);
+}
+.row-leave-active {
+  transition: opacity 0.2s ease;
+}
+.row-enter-from {
+  opacity: 0;
+  transform: translateX(-12px);
+}
+.row-leave-to {
+  opacity: 0;
+}
+.row-move {
+  transition: transform 0.5s var(--ease-out-soft);
+}
+
+/* Modal */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+.modal-enter-active .modal-panel,
+.modal-leave-active .modal-panel {
+  transition: transform 0.25s var(--ease-out-soft), opacity 0.25s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-from .modal-panel,
+.modal-leave-to .modal-panel {
+  opacity: 0;
+  transform: translateY(12px) scale(0.97);
+}
+
+/* Dropdown / mobile menu / collapsible */
+.drop-enter-active,
+.drop-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s var(--ease-out-soft);
+}
+.drop-enter-from,
+.drop-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* Toasts */
+.toast-enter-active {
+  transition:
+    opacity 0.3s var(--ease-out-soft),
+    transform 0.3s var(--ease-out-soft);
+}
+.toast-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.toast-enter-from {
+  opacity: 0;
+  transform: translateX(24px);
+}
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(24px);
+}
+.toast-move {
+  transition: transform 0.3s var(--ease-out-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

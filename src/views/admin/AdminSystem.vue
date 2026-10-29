@@ -10,7 +10,7 @@ import { useToastStore } from '@/stores/toast'
 interface System {
   app: { env: string; debug: boolean; php: string; laravel: string; timezone: string; url: string }
   database: { driver: string; size_mb: number | null; rows: Record<string, number> }
-  queue: { connection: string; pending: number | null; failed: number }
+  queue: { connection: string; pending: number | null; failed: number; queues?: { default: number | null; market_data: number | null } }
   redis: { memory: string | null } | null
   scheduler: { last_run_at: string | null; failures_24h: number }
   disk: { free_gb: number; total_gb: number }
@@ -55,7 +55,9 @@ function schedulerHealthy(at: string | null): boolean {
         label="Antrean job"
         :value="`${system.queue.pending ?? '–'} menunggu`"
         :tone="system.queue.failed ? 'down' : undefined"
-        :hint="`${system.queue.failed} job gagal · ${system.queue.connection}`"
+        :hint="system.queue.queues
+          ? `${system.queue.queues.default ?? '–'} cepat · ${system.queue.queues.market_data ?? '–'} data pasar · ${system.queue.failed} gagal`
+          : `${system.queue.failed} job gagal · ${system.queue.connection}`"
       />
       <StatCard label="Database" :value="system.database.size_mb !== null ? `${system.database.size_mb} MB` : system.database.driver" :hint="`Redis: ${system.redis?.memory ?? '–'}`" />
       <StatCard label="Disk" :value="`${system.disk.free_gb} GB kosong`" :hint="`dari ${system.disk.total_gb} GB`" :tone="system.disk.free_gb < 5 ? 'down' : undefined" />

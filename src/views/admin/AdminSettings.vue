@@ -21,6 +21,23 @@ interface Field {
   source?: 'panel' | 'env' | null
 }
 
+interface AiStatus {
+  enabled: boolean
+  provider: string | null
+  model: string | null
+  paused_until: string | null
+  reason: string | null
+  requests_today: number
+  max_per_day: number
+  max_per_minute: number
+  last_success_at: string | null
+}
+
+interface SettingsResponse {
+  groups: Group[]
+  ai_status: AiStatus
+}
+
 interface Group {
   key: string
   label: string
@@ -30,21 +47,23 @@ interface Group {
 
 const toast = useToastStore()
 const groups = ref<Group[] | null>(null)
+const aiStatus = ref<AiStatus | null>(null)
 const form = reactive<Record<string, unknown>>({})
 const saving = ref<string | null>(null)
 const testing = ref(false)
 const aiResult = ref<{ ok: boolean; provider: string | null; model: string | null; latency_ms: number | null; error: string | null } | null>(null)
 
-function fill(data: Group[]) {
-  groups.value = data
-  for (const group of data) {
+function fill(data: SettingsResponse) {
+  groups.value = data.groups
+  aiStatus.value = data.ai_status
+  for (const group of data.groups) {
     for (const field of group.fields) form[field.key] = field.type === 'secret' ? '' : field.value
   }
 }
 
 async function load() {
-  const { data } = await api.get<{ groups: Group[] }>('/admin/settings')
-  fill(data.groups)
+  const { data } = await api.get<SettingsResponse>('/admin/settings')
+  fill(data)
 }
 
 onMounted(load)
@@ -70,8 +89,8 @@ async function save(group: Group) {
   }
   saving.value = group.key
   try {
-    const { data } = await api.put<{ groups: Group[] }>('/admin/settings', { values })
-    fill(data.groups)
+    const { data } = await api.put<SettingsResponse>('/admin/settings', { values })
+    fill(data)
     toast.success(`${group.label} disimpan`, 'Berlaku langsung untuk request, jadwal, dan job berikutnya.')
   } catch (error) {
     toast.error('Gagal menyimpan', errorMessage(error))
@@ -82,8 +101,8 @@ async function save(group: Group) {
 
 async function reset(field: Field) {
   if (!confirm(`Kembalikan "${field.label}" ke nilai dari .env?`)) return
-  const { data } = await api.post<{ groups: Group[] }>('/admin/settings/reset', { keys: [field.key] })
-  fill(data.groups)
+  const { data } = await api.post<SettingsResponse>('/admin/settings/reset', { keys: [field.key] })
+  fill(data)
   toast.info(`${field.label} dikembalikan ke .env`)
 }
 
@@ -93,11 +112,17 @@ async function testAi() {
   try {
     const { data } = await api.post('/admin/settings/test-ai')
     aiResult.value = data
+    await load()
   } catch (error) {
     toast.error('Tes AI gagal', errorMessage(error))
   } finally {
     testing.value = false
   }
+}
+
+function when(iso: string | null): string {
+  if (!iso) return 'belum pernah'
+  return new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
 function display(value: unknown): string {
@@ -120,6 +145,17 @@ function display(value: unknown): string {
         <button v-if="group.key === 'ai'" type="button" class="btn-ghost text-xs" :disabled="testing" @click="testAi">
           {{ testing ? 'Menguji…' : 'Tes koneksi AI' }}
         </button>
+      </div>
+
+      <div v-if="group.key === 'ai' && aiStatus" class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg bg-panel-2/60 px-3 py-2 text-xs">
+        <span class="flex items-center gap-1.5">
+          <span class="h-2 w-2 rounded-full" :class="!aiStatus.enabled ? 'bg-muted' : aiStatus.paused_until ? 'bg-amber-400' : 'bg-up'" />
+          <span class="font-medium">{{ !aiStatus.enabled ? 'Nonaktif (pakai lexicon/template)' : aiStatus.paused_until ? `Dijeda sampai ${when(aiStatus.paused_until)}` : 'Aktif' }}</span>
+        </span>
+        <span class="text-muted">Request hari ini <span class="num text-text">{{ aiStatus.requests_today }} / {{ aiStatus.max_per_day }}</span></span>
+        <span class="text-muted">Maks <span class="num text-text">{{ aiStatus.max_per_minute }}</span>/menit</span>
+        <span class="text-muted">Terakhir berhasil <span class="text-text">{{ when(aiStatus.last_success_at) }}</span></span>
+        <span v-if="aiStatus.reason" class="w-full text-amber-400">{{ aiStatus.reason }} — jeda dicabut otomatis saat pengaturan AI diubah atau tes koneksi berhasil.</span>
       </div>
 
       <Transition name="drop">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import Toaster from '@/components/Toaster.vue'
@@ -10,7 +10,7 @@ const auth = useAuthStore()
 const router = useRouter()
 const menuOpen = ref(false)
 
-const nav = [
+const baseNav = [
   { to: '/', label: 'Ringkasan', exact: true },
   { to: '/markets', label: 'Market' },
   { to: '/discover', label: 'Temukan' },
@@ -19,6 +19,8 @@ const nav = [
   { to: '/news', label: 'Berita' },
   { to: '/portfolio', label: 'Portofolio' },
 ]
+
+const nav = computed(() => (auth.user?.is_admin ? [...baseNav, { to: '/admin', label: 'Admin' }] : baseNav))
 
 async function logout() {
   await auth.logout()
@@ -79,7 +81,7 @@ async function logout() {
     <main class="mx-auto max-w-7xl px-4 py-6">
       <RouterView v-slot="{ Component, route }">
         <Transition name="page" mode="out-in">
-          <component :is="Component" :key="route.path" />
+          <component :is="Component" :key="route.matched[1]?.path ?? route.path" />
         </Transition>
       </RouterView>
     </main>

@@ -19,6 +19,20 @@ const router = createRouter({
         { path: 'signals', name: 'signals', component: () => import('@/views/SignalsView.vue') },
         { path: 'whales', name: 'whales', component: () => import('@/views/WhalesView.vue') },
         { path: 'news', name: 'news', component: () => import('@/views/NewsView.vue') },
+        {
+          path: 'admin',
+          component: () => import('@/views/admin/AdminLayout.vue'),
+          meta: { admin: true },
+          children: [
+            { path: '', redirect: '/admin/settings' },
+            { path: 'settings', name: 'admin-settings', component: () => import('@/views/admin/AdminSettings.vue') },
+            { path: 'users', name: 'admin-users', component: () => import('@/views/admin/AdminUsers.vue') },
+            { path: 'backups', name: 'admin-backups', component: () => import('@/views/admin/AdminBackups.vue') },
+            { path: 'logs', name: 'admin-logs', component: () => import('@/views/admin/AdminLogs.vue') },
+            { path: 'tasks', name: 'admin-tasks', component: () => import('@/views/admin/AdminTasks.vue') },
+            { path: 'system', name: 'admin-system', component: () => import('@/views/admin/AdminSystem.vue') },
+          ],
+        },
       ],
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -31,6 +45,7 @@ router.beforeEach(async (to) => {
 
   if (!to.meta.guest && !auth.user) return { name: 'login', query: { redirect: to.fullPath } }
   if (to.meta.guest && auth.user) return { name: 'dashboard' }
+  if (to.matched.some((record) => record.meta.admin) && !auth.user?.is_admin) return { name: 'dashboard' }
 })
 
 export default router

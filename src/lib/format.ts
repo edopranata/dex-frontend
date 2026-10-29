@@ -82,3 +82,32 @@ export function explorerUrl(chain: string, kind: 'tx' | 'address', value: string
   const explorer = EXPLORERS[chain]
   return explorer ? explorer[kind] + value : null
 }
+
+export function bytes(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '–'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let size = value
+  let unit = 0
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024
+    unit++
+  }
+  return `${size.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`
+}
+
+export function duration(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined) return '–'
+  if (ms < 1000) return `${ms} ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)} dtk`
+  return `${Math.floor(ms / 60000)} mnt ${Math.round((ms % 60000) / 1000)} dtk`
+}
+
+/** Relative time that also works for the future ("dalam 12 mnt"). */
+export function fromNow(iso: string | null | undefined): string {
+  if (!iso) return '–'
+  const diff = (new Date(iso).getTime() - Date.now()) / 1000
+  if (diff <= 0) return timeAgo(iso)
+  if (diff < 60) return `dalam ${Math.ceil(diff)} dtk`
+  if (diff < 3600) return `dalam ${Math.ceil(diff / 60)} mnt`
+  return `dalam ${Math.floor(diff / 3600)} jam ${Math.ceil((diff % 3600) / 60)} mnt`
+}

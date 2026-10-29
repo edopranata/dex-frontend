@@ -16,6 +16,7 @@ import { api } from '@/lib/api'
 import { changeClass, compact, pct, price, qty, timeAgo, usd } from '@/lib/format'
 import type { Analysis, Candle, NewsItem, Order, Portfolio, Signal, Token, WhaleTrade } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
+import { usePortfolioStore } from '@/stores/portfolio'
 
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
@@ -61,6 +62,7 @@ async function loadActivity() {
 }
 
 async function afterTrade() {
+  usePortfolioStore().refresh()
   await Promise.all([loadActivity(), auth.fetchUser(), loadToken()])
 }
 
@@ -121,8 +123,8 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
       </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3">
-      <div class="min-w-0 space-y-6 lg:col-span-2">
+    <div class="grid gap-6 lg:grid-cols-3 3xl:grid-cols-4">
+      <div class="min-w-0 space-y-6 lg:col-span-2 3xl:col-span-3">
         <section class="card animate-fade-up p-3">
           <div class="mb-2 flex items-center gap-1">
             <button
@@ -224,6 +226,6 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
   </div>
   <div v-else class="space-y-6">
     <div class="flex items-center gap-4"><div class="skeleton h-11 w-11 rounded-full" /><Skeleton class="w-64" :rows="2" height="h-4" /></div>
-    <div class="grid gap-6 lg:grid-cols-3"><div class="skeleton h-[420px] lg:col-span-2" /><Skeleton :rows="5" height="h-20" /></div>
+    <div class="grid gap-6 lg:grid-cols-3 3xl:grid-cols-4"><div class="skeleton h-[420px] lg:col-span-2 3xl:col-span-3" /><Skeleton :rows="5" height="h-20" /></div>
   </div>
 </template>

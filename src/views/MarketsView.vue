@@ -163,7 +163,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
       </select>
     </div>
 
-    <div class="grid gap-4 xl:grid-cols-[1fr_20rem]">
+    <div class="grid gap-4 xl:grid-cols-[1fr_20rem] 3xl:grid-cols-[1fr_24rem]">
       <div class="card animate-fade-up min-w-0 overflow-x-auto">
         <table class="table">
           <thead>

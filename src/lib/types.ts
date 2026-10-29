@@ -10,6 +10,44 @@ export interface User {
   email: string
   balance_usd: number
   is_admin: boolean
+  two_factor_enabled: boolean
+  telegram_linked: boolean
+  created_at: string | null
+}
+
+export interface PortfolioSummary {
+  balance_usd: number
+  holdings_value_usd: number
+  equity_usd: number
+  starting_balance: number
+  total_pnl: number
+  total_pnl_pct: number
+  unrealized_pnl: number
+  realized_pnl: number
+  fees_paid: number
+  trades: number
+  open_positions: number
+  pending_orders: number
+}
+
+export interface NotificationSettings {
+  signals: boolean
+  signal_updates: boolean
+  risk: boolean
+  watchlist: boolean
+  system: boolean
+  daily_summary: boolean
+  signal_min: 'BUY' | 'STRONG_BUY'
+  daily_summary_hour: number
+  quiet_start_hour: number
+  quiet_end_hour: number
+}
+
+export interface Profile {
+  user: User
+  two_factor: { enabled: boolean; confirmed_at: string | null; recovery_codes_left: number }
+  telegram: { available: boolean; linked: boolean; username: string | null; linked_at: string | null }
+  notifications: NotificationSettings
 }
 
 export interface SecurityCheck {

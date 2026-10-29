@@ -127,7 +127,7 @@ function ageDays(iso: string | null) {
       </select>
     </div>
 
-    <div v-if="candidates === null" class="grid gap-4 lg:grid-cols-2">
+    <div v-if="candidates === null" class="grid gap-4 lg:grid-cols-2 3xl:grid-cols-3 4xl:grid-cols-4">
       <div v-for="i in 4" :key="i" class="card p-4"><Skeleton :rows="4" height="h-8" /></div>
     </div>
 
@@ -137,7 +137,7 @@ function ageDays(iso: string | null) {
       description="Discovery berjalan otomatis setiap 30 menit. Jalankan manual dengan: php artisan market:discover --sync"
     />
 
-    <TransitionGroup v-else tag="div" name="row" class="grid gap-4 lg:grid-cols-2">
+    <TransitionGroup v-else tag="div" name="row" class="grid gap-4 lg:grid-cols-2 3xl:grid-cols-3 4xl:grid-cols-4">
       <article
         v-for="(c, i) in candidates"
         :key="c.id"

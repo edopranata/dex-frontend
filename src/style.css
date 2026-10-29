@@ -15,6 +15,10 @@
   --color-warn: #f59e0b;
   --color-brand: #3b82f6;
 
+  /* Wide desktop and 4K monitors, on top of Tailwind's sm–2xl. */
+  --breakpoint-3xl: 120rem;
+  --breakpoint-4xl: 160rem;
+
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
   --animate-fade-up: fade-up 0.45s var(--ease-out-soft) both;
@@ -142,6 +146,18 @@
   @apply btn bg-down text-white hover:bg-red-400;
 }
 
+@utility nav-item {
+  @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors duration-150 hover:bg-panel-2/70 hover:text-text;
+}
+
+@utility nav-item-active {
+  @apply bg-brand/15 text-text hover:bg-brand/20;
+}
+
+@utility badge-mini {
+  @apply rounded px-1 py-px text-[9px] leading-tight font-semibold;
+}
+
 @layer components {
   .table {
     @apply w-full text-sm;
@@ -154,6 +170,16 @@
   .table td {
     @apply border-t border-line px-3 py-2;
   }
+}
+
+/* Backdrops */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 /* Route transition */
@@ -254,5 +280,12 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Very wide screens: scale everything up a little so text is not tiny on 4K. */
+@media (min-width: 160rem) {
+  html {
+    font-size: 17px;
   }
 }

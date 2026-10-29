@@ -51,9 +51,16 @@ const aiStatus = ref<AiStatus | null>(null)
 const form = reactive<Record<string, unknown>>({})
 const saving = ref<string | null>(null)
 const testing = ref(false)
-const telegramBusy = ref<'chats' | 'test' | null>(null)
-const telegramChats = ref<{ bot: { username: string; name: string }; chats: { id: string; type: string; title: string }[] } | null>(null)
-const telegramResult = ref<{ ok: boolean; bot: { username: string } | null; error: string | null } | null>(null)
+interface TelegramStatus {
+  active: boolean
+  bot: { username: string; name: string } | null
+  webhook: { url: string; expected_url: string; connected: boolean; pending: number; last_error: string | null; last_error_at: string | null } | null
+  linked_users: number
+  error: string | null
+}
+
+const telegram = ref<TelegramStatus | null>(null)
+const connecting = ref(false)
 const aiResult = ref<{ ok: boolean; provider: string | null; model: string | null; latency_ms: number | null; error: string | null } | null>(null)
 
 function fill(data: SettingsResponse) {
@@ -69,7 +76,7 @@ async function load() {
   fill(data)
 }
 
-onMounted(load)
+onMounted(() => Promise.all([load(), loadTelegram()]))
 
 function changedValues(group: Group): Record<string, unknown> {
   const values: Record<string, unknown> = {}
@@ -94,6 +101,7 @@ async function save(group: Group) {
   try {
     const { data } = await api.put<SettingsResponse>('/admin/settings', { values })
     fill(data)
+    if (group.key === 'telegram') loadTelegram()
     toast.success(`${group.label} disimpan`, 'Berlaku langsung untuk request, jadwal, dan job berikutnya.')
   } catch (error) {
     toast.error('Gagal menyimpan', errorMessage(error))
@@ -123,36 +131,21 @@ async function testAi() {
   }
 }
 
-async function findTelegramChats() {
-  telegramBusy.value = 'chats'
-  telegramResult.value = null
-  try {
-    const { data } = await api.post('/admin/telegram/chats')
-    telegramChats.value = data
-    if (!data.chats.length) toast.info('Belum ada chat', `Kirim /start ke @${data.bot.username} di Telegram, lalu klik lagi.`)
-  } catch (error) {
-    telegramChats.value = null
-    toast.error('Gagal membaca chat', errorMessage(error))
-  } finally {
-    telegramBusy.value = null
-  }
+async function loadTelegram() {
+  const { data } = await api.get<TelegramStatus>('/admin/telegram')
+  telegram.value = data
 }
 
-function useChat(id: string) {
-  form['market.telegram.chat_id'] = id
-  toast.info('Chat ID dipilih', 'Klik Simpan untuk memakainya.')
-}
-
-async function testTelegram() {
-  telegramBusy.value = 'test'
-  telegramResult.value = null
+async function connectWebhook() {
+  connecting.value = true
   try {
-    const { data } = await api.post('/admin/telegram/test')
-    telegramResult.value = data
+    const { data } = await api.post<TelegramStatus>('/admin/telegram/webhook')
+    telegram.value = data
+    toast.success('Webhook dipasang')
   } catch (error) {
-    toast.error('Tes Telegram gagal', errorMessage(error))
+    toast.error('Gagal memasang webhook', errorMessage(error))
   } finally {
-    telegramBusy.value = null
+    connecting.value = false
   }
 }
 
@@ -181,14 +174,6 @@ function display(value: unknown): string {
         <button v-if="group.key === 'ai'" type="button" class="btn-ghost text-xs" :disabled="testing" @click="testAi">
           {{ testing ? 'Menguji…' : 'Tes koneksi AI' }}
         </button>
-        <div v-if="group.key === 'telegram'" class="flex gap-2">
-          <button type="button" class="btn-ghost text-xs" :disabled="telegramBusy !== null" @click="findTelegramChats">
-            {{ telegramBusy === 'chats' ? 'Mencari…' : 'Cari chat ID' }}
-          </button>
-          <button type="button" class="btn-ghost text-xs" :disabled="telegramBusy !== null" @click="testTelegram">
-            {{ telegramBusy === 'test' ? 'Mengirim…' : 'Kirim pesan tes' }}
-          </button>
-        </div>
       </div>
 
       <div v-if="group.key === 'ai' && aiStatus" class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg bg-panel-2/60 px-3 py-2 text-xs">
@@ -213,35 +198,28 @@ function display(value: unknown): string {
         </div>
       </Transition>
 
-      <Transition name="drop">
-        <div v-if="group.key === 'telegram' && telegramChats" class="mt-3 rounded-lg border border-line p-3 text-sm">
-          <p class="text-xs text-muted">
-            Bot <span class="text-text">@{{ telegramChats.bot.username }}</span>.
-            {{ telegramChats.chats.length ? 'Chat yang baru mengirim pesan ke bot:' : `Belum ada chat — kirim /start ke @${telegramChats.bot.username}, lalu klik "Cari chat ID" lagi.` }}
-          </p>
-          <ul v-if="telegramChats.chats.length" class="mt-2 space-y-1">
-            <li v-for="chat in telegramChats.chats" :key="chat.id" class="flex items-center justify-between gap-3 rounded bg-panel-2/60 px-2 py-1.5">
-              <span>{{ chat.title }} <span class="text-xs text-muted">· {{ chat.type }} · <span class="num">{{ chat.id }}</span></span></span>
-              <button type="button" class="text-xs text-brand hover:underline" :disabled="form['market.telegram.chat_id'] === chat.id" @click="useChat(chat.id)">
-                {{ form['market.telegram.chat_id'] === chat.id ? 'Dipilih' : 'Pakai' }}
-              </button>
-            </li>
-          </ul>
+      <div v-if="group.key === 'telegram' && telegram" class="mt-3 space-y-2 rounded-lg bg-panel-2/60 px-3 py-2.5 text-xs">
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <span class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full" :class="!telegram.active ? 'bg-muted' : telegram.webhook?.connected ? 'bg-up' : 'bg-down'" />
+            <span class="font-medium">{{ !telegram.active ? 'Nonaktif' : telegram.webhook?.connected ? 'Webhook terhubung' : 'Webhook belum terpasang' }}</span>
+          </span>
+          <span v-if="telegram.bot" class="text-muted">Bot <a :href="`https://t.me/${telegram.bot.username}`" target="_blank" rel="noopener" class="text-sky-400 hover:underline">@{{ telegram.bot.username }}</a></span>
+          <span class="text-muted">Pengguna terhubung <span class="num text-text">{{ telegram.linked_users }}</span></span>
+          <span v-if="telegram.webhook?.pending" class="text-muted">Antrean pesan <span class="num text-text">{{ telegram.webhook.pending }}</span></span>
+          <button v-if="telegram.active" type="button" class="ml-auto text-brand hover:underline" :disabled="connecting" @click="connectWebhook">
+            {{ connecting ? 'Memasang…' : 'Pasang ulang webhook' }}
+          </button>
         </div>
-      </Transition>
+        <p v-if="telegram.error" class="text-down">{{ telegram.error }}</p>
+        <p v-if="telegram.webhook?.last_error" class="text-down">
+          Error terakhir dari Telegram ({{ when(telegram.webhook.last_error_at) }}): {{ telegram.webhook.last_error }}
+        </p>
+        <p v-if="telegram.webhook && !telegram.webhook.connected && telegram.webhook.url" class="text-warn">Webhook mengarah ke {{ telegram.webhook.url }}, bukan {{ telegram.webhook.expected_url }}.</p>
+        <p class="text-muted">Setiap pengguna menghubungkan Telegram-nya sendiri dengan kode unik di <RouterLink to="/profile" class="text-brand hover:underline">Profil</RouterLink>.</p>
+      </div>
 
-      <Transition name="drop">
-        <div
-          v-if="group.key === 'telegram' && telegramResult"
-          class="mt-3 rounded-lg border p-3 text-sm"
-          :class="telegramResult.ok ? 'border-up/40 bg-up/5 text-up' : 'border-down/40 bg-down/5 text-down'"
-        >
-          <template v-if="telegramResult.ok">Pesan tes terkirim lewat @{{ telegramResult.bot?.username }}. Cek Telegram Anda.</template>
-          <template v-else>Gagal: {{ telegramResult.error }}</template>
-        </div>
-      </Transition>
-
-      <div class="mt-4 grid gap-4 md:grid-cols-2">
+      <div class="mt-4 grid gap-4 md:grid-cols-2 3xl:grid-cols-3">
         <label v-for="field in group.fields" :key="field.key" class="block">
           <span class="mb-1 flex items-center justify-between gap-2 text-xs">
             <span class="font-medium text-text">{{ field.label }}</span>

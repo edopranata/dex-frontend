@@ -51,8 +51,8 @@ const order: Recommendation[] = ['STRONG_BUY', 'BUY', 'HOLD', 'SELL', 'STRONG_SE
       <StatCard label="Nilai aset" :amount="portfolio?.holdings_value_usd" :format="usd" :hint="`Fee dibayar ${usd(portfolio?.fees_paid)}`" style="animation-delay: 180ms" />
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3">
-      <section class="card animate-fade-up min-w-0 p-4 lg:col-span-2" style="animation-delay: 120ms">
+    <div class="grid gap-6 lg:grid-cols-3 3xl:grid-cols-4">
+      <section class="card animate-fade-up min-w-0 p-4 lg:col-span-2 3xl:col-span-3" style="animation-delay: 120ms">
         <div class="flex items-center justify-between">
           <h2 class="card-title">Rekomendasi teratas</h2>
           <RouterLink to="/signals" class="text-xs text-brand hover:underline">Rekam jejak sinyal →</RouterLink>

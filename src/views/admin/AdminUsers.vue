@@ -16,6 +16,8 @@ interface AdminUser {
   positions_count: number
   orders_count: number
   created_at: string
+  two_factor_enabled: boolean
+  telegram_linked: boolean
 }
 
 const auth = useAuthStore()
@@ -47,7 +49,7 @@ async function create() {
   }
 }
 
-async function update(user: AdminUser, payload: Partial<AdminUser> & { password?: string }, message: string) {
+async function update(user: AdminUser, payload: Partial<AdminUser> & { password?: string; disable_two_factor?: boolean }, message: string) {
   try {
     await api.patch(`/admin/users/${user.id}`, payload)
     toast.success(message)
@@ -60,6 +62,12 @@ async function update(user: AdminUser, payload: Partial<AdminUser> & { password?
 function resetPassword(user: AdminUser) {
   const password = prompt(`Password baru untuk ${user.email} (min. 8 karakter):`)
   if (password) update(user, { password }, `Password ${user.email} diganti`)
+}
+
+function resetTwoFactor(user: AdminUser) {
+  if (confirm(`Matikan 2FA ${user.email}? Lakukan hanya jika pemiliknya kehilangan HP dan kode pemulihan, setelah identitasnya dipastikan.`)) {
+    update(user, { disable_two_factor: true }, `2FA ${user.email} dimatikan`)
+  }
 }
 
 async function remove(user: AdminUser) {
@@ -101,6 +109,7 @@ async function remove(user: AdminUser) {
             <th class="text-right!">Saldo virtual</th>
             <th class="text-right!">Posisi / order</th>
             <th>Peran</th>
+            <th>Keamanan</th>
             <th>Dibuat</th>
             <th />
           </tr>
@@ -114,6 +123,10 @@ async function remove(user: AdminUser) {
             <td>
               <span class="rounded px-1.5 py-0.5 text-xs" :class="u.is_admin ? 'bg-brand/15 text-brand' : 'bg-panel-2 text-muted'">{{ u.is_admin ? 'Admin' : 'Pengguna' }}</span>
             </td>
+            <td class="whitespace-nowrap">
+              <span class="rounded px-1.5 py-0.5 text-xs" :class="u.two_factor_enabled ? 'bg-up/15 text-up' : 'bg-panel-2 text-muted'">{{ u.two_factor_enabled ? '2FA aktif' : 'Tanpa 2FA' }}</span>
+              <span v-if="u.telegram_linked" class="ml-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-xs text-sky-400">Telegram</span>
+            </td>
             <td class="text-xs whitespace-nowrap text-muted">{{ dateTime(u.created_at) }}</td>
             <td class="whitespace-nowrap text-right text-xs">
               <button class="text-brand hover:underline" @click="resetPassword(u)">Reset password</button>
@@ -122,6 +135,10 @@ async function remove(user: AdminUser) {
                 <button class="text-brand hover:underline" @click="update(u, { is_admin: !u.is_admin }, u.is_admin ? `${u.email} bukan admin lagi` : `${u.email} sekarang admin`)">
                   {{ u.is_admin ? 'Cabut admin' : 'Jadikan admin' }}
                 </button>
+                <template v-if="u.two_factor_enabled">
+                  <span class="mx-1 text-line">|</span>
+                  <button class="text-warn hover:underline" @click="resetTwoFactor(u)">Reset 2FA</button>
+                </template>
                 <span class="mx-1 text-line">|</span>
                 <button class="text-down hover:underline" @click="remove(u)">Hapus</button>
               </template>

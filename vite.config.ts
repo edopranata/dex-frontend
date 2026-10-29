@@ -17,6 +17,7 @@ export default defineConfig({
     proxy: {
       '/api': { target: backend },
       '/sanctum': { target: backend },
+      '/horizon': { target: backend },
     },
   },
 })

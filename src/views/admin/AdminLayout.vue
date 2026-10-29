@@ -26,6 +26,15 @@ const tabs = [
       >
         {{ tab.label }}
       </RouterLink>
+      <a
+        href="/horizon"
+        target="_blank"
+        rel="noopener"
+        class="-mb-px ml-auto border-b-2 border-transparent px-3 py-2 text-sm whitespace-nowrap text-muted transition-colors hover:text-text"
+        title="Dashboard queue (Laravel Horizon), dibuka di tab baru"
+      >
+        Horizon ↗
+      </a>
     </nav>
 
     <RouterView v-slot="{ Component }">

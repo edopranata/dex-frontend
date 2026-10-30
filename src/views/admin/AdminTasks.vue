@@ -11,8 +11,8 @@ import AppSelect from '@/components/AppSelect.vue'
 interface Task {
   command: string
   schedule: string
-  last_status: string
-  last_run_at: string
+  last_status: string | null
+  last_run_at: string | null
   last_duration_ms: number | null
   next_run_at: string | null
   runs_24h: number
@@ -111,7 +111,7 @@ function scheduleLabel(schedule: string | null): string {
     </div>
 
     <section class="card overflow-x-auto">
-      <h2 class="card-title p-4 pb-2">Jadwal (dari eksekusi yang tercatat)</h2>
+      <h2 class="card-title p-4 pb-2">Jadwal aktif</h2>
       <Skeleton v-if="!tasks" class="p-3" :rows="5" />
       <table v-else-if="tasks.length" class="table">
         <thead>
@@ -129,11 +129,14 @@ function scheduleLabel(schedule: string | null): string {
         <tbody>
           <tr v-for="t in tasks" :key="t.command" class="hover:bg-panel-2/40">
             <td class="num text-sm font-medium">{{ t.command }}</td>
-            <td class="text-xs text-muted">{{ scheduleLabel(t.schedule) }}</td>
-            <td><span class="rounded px-1.5 py-0.5 text-xs" :class="statusClass[t.last_status]">{{ statusLabel[t.last_status] ?? t.last_status }}</span></td>
-            <td class="text-xs whitespace-nowrap text-muted">{{ timeAgo(t.last_run_at) }}</td>
+            <td class="text-xs whitespace-nowrap text-muted">{{ scheduleLabel(t.schedule) }}</td>
+            <td>
+              <span v-if="t.last_status" class="rounded px-1.5 py-0.5 text-xs" :class="statusClass[t.last_status]">{{ statusLabel[t.last_status] ?? t.last_status }}</span>
+              <span v-else class="text-xs text-muted">Belum jalan</span>
+            </td>
+            <td class="text-xs whitespace-nowrap text-muted">{{ t.last_run_at ? timeAgo(t.last_run_at) : '—' }}</td>
             <td class="text-xs whitespace-nowrap text-muted">{{ fromNow(t.next_run_at) }}</td>
-            <td class="num text-right text-xs">{{ duration(t.last_duration_ms) }} <span class="text-muted">({{ duration(t.avg_duration_ms) }})</span></td>
+            <td class="num text-right text-xs whitespace-nowrap">{{ duration(t.last_duration_ms) }} <span class="text-muted">({{ duration(t.avg_duration_ms) }})</span></td>
             <td class="num text-right text-xs">
               {{ t.runs_24h }}× <span v-if="t.failures_24h" class="text-down">· {{ t.failures_24h }} gagal</span>
             </td>
@@ -146,7 +149,7 @@ function scheduleLabel(schedule: string | null): string {
           </tr>
         </tbody>
       </table>
-      <EmptyState v-else title="Belum ada eksekusi tercatat" description="Scheduler mencatat setiap jalan; tunggu ±1 menit setelah deploy." />
+      <EmptyState v-else title="Jadwal kosong" description="Tidak ada tugas di jadwal aplikasi." />
     </section>
 
     <section class="card overflow-x-auto">

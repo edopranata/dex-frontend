@@ -12,12 +12,39 @@ interface Backup {
   created_at: string
 }
 
+/** Written by deploy/backup.sh after each upload to Cloudflare R2. */
+interface OffsiteStatus {
+  ok: boolean
+  file: string
+  size: number
+  at: string
+  error?: string
+}
+
+/** Written by deploy/restore-check.sh. */
+interface RestoreCheck {
+  ok: boolean
+  file: string
+  source: string
+  at: string
+  seconds: number
+  tables: number
+  live_tables: number
+  migrations: number
+  live_migrations: number
+  users: number
+  tokens: number
+  orders: number
+}
+
 const toast = useToastStore()
 const backups = ref<Backup[] | null>(null)
 const lastBackupAt = ref<string | null>(null)
 const availableAt = ref<string | null>(null)
 const cooldown = ref(60)
 const schedule = ref('')
+const offsite = ref<OffsiteStatus | null>(null)
+const restoreCheck = ref<RestoreCheck | null>(null)
 const creating = ref(false)
 const now = ref(Date.now())
 const timer = setInterval(() => (now.value = Date.now()), 1000)
@@ -30,7 +57,12 @@ async function load() {
   availableAt.value = data.manual_available_at
   cooldown.value = data.cooldown_minutes
   schedule.value = data.schedule
+  offsite.value = data.offsite
+  restoreCheck.value = data.restore_check
 }
+
+/** A daily copy older than ~a day and a half means the last scheduled upload did not happen. */
+const offsiteStale = computed(() => !!offsite.value && now.value - new Date(offsite.value.at).getTime() > 36 * 3600 * 1000)
 
 onMounted(load)
 
@@ -84,6 +116,50 @@ async function remove(backup: Backup) {
           <template v-if="remaining > 0">Tersedia lagi dalam <span class="num text-warn">{{ remainingLabel }}</span> (jeda {{ cooldown }} menit sejak backup terakhir)</template>
           <template v-else>Maksimal 1× per {{ cooldown }} menit</template>
         </div>
+      </div>
+    </div>
+
+    <div v-if="backups" class="grid gap-4 md:grid-cols-2">
+      <div class="card p-4">
+        <div class="flex items-center gap-2">
+          <div class="mr-auto text-sm font-medium">Salinan di luar VPS (Cloudflare R2)</div>
+          <span v-if="!offsite" class="rounded bg-panel-2 px-1.5 py-0.5 text-xs text-muted">Belum diatur</span>
+          <span v-else-if="!offsite.ok" class="rounded bg-down/15 px-1.5 py-0.5 text-xs text-down">Gagal</span>
+          <span v-else-if="offsiteStale" class="rounded bg-warn/15 px-1.5 py-0.5 text-xs text-warn">Terlambat</span>
+          <span v-else class="rounded bg-up/15 px-1.5 py-0.5 text-xs text-up">Aman</span>
+        </div>
+        <p v-if="!offsite" class="mt-1 text-xs text-muted">Isi <code class="num text-text">/etc/dex/offsite.env</code> di server; backup harian berikutnya ikut di-upload.</p>
+        <template v-else>
+          <p class="mt-1 text-xs text-muted">
+            Upload terakhir: <span class="text-text">{{ dateTime(offsite.at) }} ({{ timeAgo(offsite.at) }})</span>
+          </p>
+          <p class="num mt-0.5 text-xs text-muted">{{ offsite.file }} · {{ bytes(offsite.size) }}</p>
+          <p v-if="!offsite.ok && offsite.error" class="mt-1 text-xs break-words text-down">{{ offsite.error }}</p>
+        </template>
+      </div>
+
+      <div class="card p-4">
+        <div class="flex items-center gap-2">
+          <div class="mr-auto text-sm font-medium">Uji restore</div>
+          <span v-if="!restoreCheck" class="rounded bg-panel-2 px-1.5 py-0.5 text-xs text-muted">Belum pernah</span>
+          <span v-else-if="restoreCheck.ok" class="rounded bg-up/15 px-1.5 py-0.5 text-xs text-up">Lolos</span>
+          <span v-else class="rounded bg-down/15 px-1.5 py-0.5 text-xs text-down">Gagal</span>
+        </div>
+        <p v-if="!restoreCheck" class="mt-1 text-xs text-muted">
+          Jalankan <code class="num text-text">bash deploy/restore-check.sh</code> di server: backup terbaru di-restore ke database sementara, dibandingkan, lalu dihapus.
+        </p>
+        <template v-else>
+          <p class="mt-1 text-xs text-muted">
+            {{ dateTime(restoreCheck.at) }} ({{ timeAgo(restoreCheck.at) }}) · dari {{ restoreCheck.source }} · {{ restoreCheck.seconds }} detik
+          </p>
+          <p class="num mt-0.5 text-xs text-muted">{{ restoreCheck.file }}</p>
+          <p class="mt-0.5 text-xs text-muted">
+            Tabel <span class="num text-text">{{ restoreCheck.tables }}/{{ restoreCheck.live_tables }}</span> · migrasi
+            <span class="num text-text">{{ restoreCheck.migrations }}/{{ restoreCheck.live_migrations }}</span> · pengguna
+            <span class="num text-text">{{ restoreCheck.users }}</span> · token <span class="num text-text">{{ restoreCheck.tokens }}</span> · order
+            <span class="num text-text">{{ restoreCheck.orders }}</span>
+          </p>
+        </template>
       </div>
     </div>
 

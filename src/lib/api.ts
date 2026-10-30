@@ -1,4 +1,6 @@
 import axios, { AxiosError } from 'axios'
+import { useProgressStore } from '@/stores/progress'
+import { useSyncStore } from '@/stores/sync'
 
 export const api = axios.create({
   baseURL: '/api',
@@ -16,15 +18,48 @@ export async function ensureCsrf(): Promise<void> {
   csrfReady = true
 }
 
+/** Requests made while a page loads or the refresh button runs keep the top loading bar up. */
+const tracked = new WeakSet<object>()
+
+function settle(config: object | undefined) {
+  if (config && tracked.has(config)) {
+    tracked.delete(config)
+    useProgressStore().requestFinished()
+  }
+}
+
 api.interceptors.request.use(async (config) => {
+  const progress = useProgressStore()
+  if (progress.tracking()) {
+    tracked.add(config)
+    progress.requestStarted()
+  }
   if (config.method && config.method.toLowerCase() !== 'get') await ensureCsrf()
   return config
 })
 
+api.interceptors.response.use(
+  (response) => {
+    settle(response.config)
+    useSyncStore().succeeded()
+    return response
+  },
+  (error: AxiosError) => {
+    settle(error.config)
+    if (error.response) useSyncStore().succeeded()
+    else useSyncStore().failedWithoutResponse()
+    return Promise.reject(error)
+  },
+)
+
 api.interceptors.response.use(undefined, (error: AxiosError) => {
   if (error.response?.status === 419) csrfReady = false
+  const code = (error.response?.data as { code?: string } | undefined)?.code
+  if (error.response?.status === 403 && code === 'password_change_required' && location.pathname !== '/change-password') {
+    location.href = '/change-password'
+  }
   const isSessionCheck = error.config?.url === '/auth/me'
-  if (error.response?.status === 401 && !isSessionCheck && !['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname)) {
+  if (error.response?.status === 401 && !isSessionCheck && !['/login', '/forgot-password', '/reset-password', '/reset-2fa'].includes(location.pathname)) {
     location.href = '/login'
   }
   return Promise.reject(error)

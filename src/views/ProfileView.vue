@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { usePageData } from '@/composables/usePolling'
+import { computed, reactive, ref } from 'vue'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
 import NotificationsCard from '@/components/profile/NotificationsCard.vue'
 import TelegramCard from '@/components/profile/TelegramCard.vue'
@@ -30,7 +31,7 @@ function badge(key: TabKey): { text: string; tone: string } | null {
   if (!profile.value) return null
   if (key === 'keamanan') return profile.value.two_factor.enabled ? { text: 'Aktif', tone: 'bg-up/15 text-up' } : { text: 'Mati', tone: 'bg-warn/15 text-warn' }
   if (key === 'telegram' && profile.value.telegram.available) {
-    return profile.value.telegram.linked ? { text: 'Terhubung', tone: 'bg-sky-500/15 text-sky-400' } : { text: 'Belum', tone: 'bg-panel-2 text-muted' }
+    return profile.value.telegram.linked ? { text: 'Terhubung', tone: 'bg-sky-500/15 text-sky-600 dark:text-sky-400' } : { text: 'Belum', tone: 'bg-panel-2 text-muted' }
   }
   return null
 }
@@ -57,7 +58,7 @@ async function load() {
   Object.assign(info, { name: data.user.name, email: data.user.email })
 }
 
-onMounted(load)
+usePageData(load)
 
 async function saveInfo() {
   saving.value = 'info'
@@ -88,7 +89,7 @@ async function savePassword() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="stack-section">
     <div class="flex flex-wrap items-center gap-4">
       <span class="grid h-14 w-14 place-items-center rounded-2xl bg-brand/20 text-xl font-semibold text-brand">{{ initials }}</span>
       <div>
@@ -100,7 +101,7 @@ async function savePassword() {
       </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
+    <div class="grid gap-section lg:grid-cols-[15rem_minmax(0,1fr)]">
       <!-- Tabs: a column on large screens, a scrollable row on phones -->
       <nav class="-mx-4 flex gap-1 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0" aria-label="Bagian profil">
         <RouterLink
@@ -121,7 +122,7 @@ async function savePassword() {
         <Skeleton v-if="!profile" :rows="1" height="h-56" />
 
         <Transition v-else name="page" mode="out-in">
-          <form v-if="active === 'akun'" key="akun" class="card p-5" @submit.prevent="saveInfo">
+          <form v-if="active === 'akun'" key="akun" class="card p-4" @submit.prevent="saveInfo">
             <h2 class="font-semibold">Data diri</h2>
             <div class="mt-4 space-y-3">
               <label class="block">
@@ -138,7 +139,7 @@ async function savePassword() {
             </div>
           </form>
 
-          <form v-else-if="active === 'password'" key="password" class="card p-5" @submit.prevent="savePassword">
+          <form v-else-if="active === 'password'" key="password" class="card p-4" @submit.prevent="savePassword">
             <h2 class="font-semibold">Ganti password</h2>
             <div class="mt-4 space-y-3">
               <label class="block">

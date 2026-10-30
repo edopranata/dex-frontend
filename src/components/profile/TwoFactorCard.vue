@@ -81,7 +81,7 @@ function download() {
 </script>
 
 <template>
-  <section class="card p-5">
+  <section class="card p-4">
     <div class="flex items-start gap-3">
       <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg" :class="status.enabled ? 'bg-up/15 text-up' : 'bg-warn/15 text-warn'">
         <AppIcon name="shield" class="h-5 w-5" />

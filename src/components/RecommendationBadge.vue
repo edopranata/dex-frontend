@@ -10,7 +10,7 @@ const styles: Record<Recommendation, string> = {
   HOLD: 'bg-warn/10 text-warn ring-warn/30',
   SELL: 'bg-down/10 text-down ring-down/30',
   STRONG_SELL: 'bg-down/20 text-down ring-down/40',
-  AVOID: 'bg-fuchsia-500/15 text-fuchsia-300 ring-fuchsia-400/40',
+  AVOID: 'bg-fuchsia-500/15 text-fuchsia-700 ring-fuchsia-500/40 dark:text-fuchsia-300 dark:ring-fuchsia-400/40',
 }
 
 const labels: Record<Recommendation, string> = {

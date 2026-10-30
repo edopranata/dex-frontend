@@ -37,10 +37,11 @@ const order: Recommendation[] = ['STRONG_BUY', 'BUY', 'HOLD', 'SELL', 'STRONG_SE
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label="Ekuitas" :amount="portfolio?.equity_usd" :format="usd" :hint="`Modal awal ${usd(portfolio?.starting_balance)}`" />
+  <div class="stack-section">
+    <div class="grid grid-cols-2 gap-section lg:grid-cols-4">
+      <StatCard :loading="!portfolio" label="Ekuitas" :amount="portfolio?.equity_usd" :format="usd" :hint="`Modal awal ${usd(portfolio?.starting_balance)}`" />
       <StatCard
+        :loading="!portfolio"
         label="Total P&L"
         :amount="portfolio?.total_pnl"
         :format="usd"
@@ -48,11 +49,11 @@ const order: Recommendation[] = ['STRONG_BUY', 'BUY', 'HOLD', 'SELL', 'STRONG_SE
         :tone="(portfolio?.total_pnl ?? 0) >= 0 ? 'up' : 'down'"
         style="animation-delay: 60ms"
       />
-      <StatCard label="Saldo USD" :amount="portfolio?.balance_usd" :format="usd" :hint="`${portfolio?.positions.length ?? 0} posisi terbuka`" style="animation-delay: 120ms" />
-      <StatCard label="Nilai aset" :amount="portfolio?.holdings_value_usd" :format="usd" :hint="`Fee dibayar ${usd(portfolio?.fees_paid)}`" style="animation-delay: 180ms" />
+      <StatCard :loading="!portfolio" label="Saldo USD" :amount="portfolio?.balance_usd" :format="usd" :hint="`${portfolio?.positions.length ?? 0} posisi terbuka`" style="animation-delay: 120ms" />
+      <StatCard :loading="!portfolio" label="Nilai aset" :amount="portfolio?.holdings_value_usd" :format="usd" :hint="`Fee dibayar ${usd(portfolio?.fees_paid)}`" style="animation-delay: 180ms" />
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3 3xl:grid-cols-4">
+    <div class="grid gap-section lg:grid-cols-3 3xl:grid-cols-4">
       <section class="card animate-fade-up min-w-0 p-4 lg:col-span-2 3xl:col-span-3" style="animation-delay: 120ms">
         <div class="flex items-center justify-between">
           <h2 class="card-title">Rekomendasi teratas</h2>
@@ -151,7 +152,7 @@ const order: Recommendation[] = ['STRONG_BUY', 'BUY', 'HOLD', 'SELL', 'STRONG_SE
       </div>
     </section>
 
-    <div class="grid gap-6 lg:grid-cols-2">
+    <div class="grid gap-section lg:grid-cols-2">
       <section class="card animate-fade-up min-w-0" style="animation-delay: 260ms">
         <div class="flex items-center justify-between p-4 pb-2">
           <h2 class="card-title">Transaksi whale terbaru</h2>

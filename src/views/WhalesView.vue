@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
+import Skeleton from '@/components/Skeleton.vue'
 import WhaleFlowChart from '@/components/WhaleFlowChart.vue'
 import type { WhaleFlowSummary } from '@/components/WhaleFlowChart.vue'
 import WhaleTable from '@/components/WhaleTable.vue'
@@ -12,6 +13,7 @@ import type { SelectOption } from '@/components/AppSelect.vue'
 
 const trades = ref<WhaleTrade[]>([])
 const summary = ref<WhaleFlowSummary[]>([])
+const loaded = ref(false)
 const tokens = ref<Token[]>([])
 const tokenId = ref<number | ''>('')
 const side = ref<'' | 'buy' | 'sell'>('')
@@ -40,6 +42,7 @@ async function load() {
   const { data } = await api.get<{ data: WhaleTrade[]; summary: WhaleFlowSummary[] }>('/whales', { params })
   trades.value = data.data
   summary.value = data.summary
+  loaded.value = true
 }
 
 usePolling(load, 60000)
@@ -49,7 +52,7 @@ api.get<{ data: Token[] }>('/tokens').then(({ data }) => (tokens.value = data.da
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="stack-section">
     <div class="flex flex-wrap items-center gap-3">
       <h1 class="text-xl font-semibold">Whale Tracker</h1>
       <AppSelect v-model="tokenId" aria-label="Token" :options="tokenOptions" />
@@ -57,10 +60,15 @@ api.get<{ data: Token[] }>('/tokens').then(({ data }) => (tokens.value = data.da
       <AppSelect v-model="hours" aria-label="Periode" :options="hourOptions" />
     </div>
 
-    <WhaleFlowChart v-if="summary.length" :summary="summary" />
+    <section v-if="!loaded" class="card p-4" aria-busy="true">
+      <div class="skeleton h-3 w-56" />
+      <Skeleton class="mt-4" :rows="6" height="h-6" />
+    </section>
+    <WhaleFlowChart v-else-if="summary.length" :summary="summary" />
 
     <section class="card">
-      <WhaleTable v-if="trades.length" :trades="trades" show-token />
+      <Skeleton v-if="!loaded" class="p-3" :rows="6" />
+      <WhaleTable v-else-if="trades.length" :trades="trades" show-token />
       <EmptyState v-else title="Tidak ada transaksi whale pada filter ini" description="Data diambil dari GeckoTerminal tiap 10 menit (transaksi 24 jam terakhir per pool)." />
     </section>
   </div>

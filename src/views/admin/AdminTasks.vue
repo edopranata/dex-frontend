@@ -100,7 +100,7 @@ function scheduleLabel(schedule: string | null): string {
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="stack-section">
     <div class="card flex flex-wrap items-end gap-3 p-4">
       <label class="block">
         <span class="mb-1 block text-xs text-muted">Jalankan perintah sekarang (lewat antrean)</span>

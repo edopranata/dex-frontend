@@ -130,7 +130,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="stack-section">
     <div class="flex flex-wrap items-center gap-3">
       <div class="mr-auto">
         <h1 class="text-xl font-semibold">Market</h1>
@@ -167,7 +167,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
       <AppSelect v-model="sortKey" aria-label="Urutan" :options="sortOptions" />
     </div>
 
-    <div class="grid gap-4 xl:grid-cols-[1fr_20rem] 3xl:grid-cols-[1fr_24rem]">
+    <div class="grid gap-section xl:grid-cols-[1fr_20rem] 3xl:grid-cols-[1fr_24rem]">
       <div class="card animate-fade-up min-w-0 overflow-x-auto">
         <table class="table">
           <thead>
@@ -204,7 +204,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
                     </div>
                     <div class="flex items-center gap-1.5 text-xs text-muted">
                       {{ t.chain_label }} · {{ t.dex_id }}
-                      <span v-if="t.source === 'discovery'" class="rounded bg-violet-500/15 px-1 text-[10px] text-violet-300" title="Ditemukan otomatis oleh discovery">auto</span>
+                      <span v-if="t.source === 'discovery'" class="rounded bg-violet-500/15 px-1 text-[10px] text-violet-700 dark:text-violet-300" title="Ditemukan otomatis oleh discovery">auto</span>
                     </div>
                   </div>
                 </div>

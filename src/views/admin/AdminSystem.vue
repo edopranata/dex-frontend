@@ -43,8 +43,8 @@ function schedulerHealthy(at: string | null): boolean {
 </script>
 
 <template>
-  <div v-if="system" class="space-y-5">
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+  <div v-if="system" class="stack-section">
+    <div class="grid grid-cols-2 gap-section lg:grid-cols-4">
       <StatCard
         label="Scheduler"
         :value="schedulerHealthy(system.scheduler.last_run_at) ? 'Berjalan' : 'Tidak aktif?'"
@@ -63,7 +63,7 @@ function schedulerHealthy(at: string | null): boolean {
       <StatCard label="Disk" :value="`${system.disk.free_gb} GB kosong`" :hint="`dari ${system.disk.total_gb} GB`" :tone="system.disk.free_gb < 5 ? 'down' : undefined" />
     </div>
 
-    <div class="grid gap-5 lg:grid-cols-2">
+    <div class="grid gap-section lg:grid-cols-2">
       <section class="card p-4">
         <h2 class="card-title">Jumlah data</h2>
         <dl class="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">

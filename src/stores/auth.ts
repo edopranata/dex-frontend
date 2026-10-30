@@ -34,15 +34,10 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = data.data
   }
 
-  async function register(payload: { name: string; email: string; password: string; password_confirmation: string }): Promise<void> {
-    const { data } = await api.post<{ data: User }>('/auth/register', payload)
-    user.value = data.data
-  }
-
   async function logout(): Promise<void> {
     await api.post('/auth/logout')
     user.value = null
   }
 
-  return { user, checked, fetchUser, login, completeTwoFactor, register, logout }
+  return { user, checked, fetchUser, login, completeTwoFactor, logout }
 })

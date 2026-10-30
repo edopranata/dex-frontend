@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppDatePicker from '@/components/AppDatePicker.vue'
 import AppSelect, { type SelectOption } from '@/components/AppSelect.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import Skeleton from '@/components/Skeleton.vue'
 import StatCard from '@/components/StatCard.vue'
 import TokenAvatar from '@/components/TokenAvatar.vue'
 import { usePolling } from '@/composables/usePolling'
@@ -18,6 +19,7 @@ const route = useRoute()
 const router = useRouter()
 const portfolio = ref<Portfolio | null>(null)
 const orders = ref<Order[]>([])
+const ordersLoaded = ref(false)
 const summary = ref<OrderHistorySummary | null>(null)
 const meta = ref<Paginated<Order>['meta'] | null>(null)
 const tokens = ref<Token[]>([])
@@ -74,6 +76,7 @@ async function loadOrders() {
   orders.value = data.data
   meta.value = data.meta
   summary.value = data.summary
+  ordersLoaded.value = true
 }
 
 async function load() {
@@ -188,22 +191,23 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="stack-section">
     <div class="flex items-center">
       <h1 class="text-xl font-semibold">Portofolio</h1>
       <button class="btn-ghost ml-auto text-down" @click="reset">Reset portofolio</button>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <StatCard label="Ekuitas" :amount="portfolio?.equity_usd" :format="usd" :hint="`Modal awal ${usd(portfolio?.starting_balance)}`" />
-      <StatCard label="Total P&L" :amount="portfolio?.total_pnl" :format="usd" :hint="pct(portfolio?.total_pnl_pct)" :tone="(portfolio?.total_pnl ?? 0) >= 0 ? 'up' : 'down'" style="animation-delay: 60ms" />
-      <StatCard label="P&L terealisasi" :amount="portfolio?.realized_pnl" :format="usd" :tone="(portfolio?.realized_pnl ?? 0) >= 0 ? 'up' : 'down'" style="animation-delay: 120ms" />
-      <StatCard label="Fee dibayar" :amount="portfolio?.fees_paid" :format="usd" :hint="`${portfolio?.trades ?? 0} transaksi`" style="animation-delay: 180ms" />
+    <div class="grid grid-cols-2 gap-section lg:grid-cols-4">
+      <StatCard :loading="!portfolio" label="Ekuitas" :amount="portfolio?.equity_usd" :format="usd" :hint="`Modal awal ${usd(portfolio?.starting_balance)}`" />
+      <StatCard :loading="!portfolio" label="Total P&L" :amount="portfolio?.total_pnl" :format="usd" :hint="pct(portfolio?.total_pnl_pct)" :tone="(portfolio?.total_pnl ?? 0) >= 0 ? 'up' : 'down'" style="animation-delay: 60ms" />
+      <StatCard :loading="!portfolio" label="P&L terealisasi" :amount="portfolio?.realized_pnl" :format="usd" :tone="(portfolio?.realized_pnl ?? 0) >= 0 ? 'up' : 'down'" style="animation-delay: 120ms" />
+      <StatCard :loading="!portfolio" label="Fee dibayar" :amount="portfolio?.fees_paid" :format="usd" :hint="`${portfolio?.trades ?? 0} transaksi`" style="animation-delay: 180ms" />
     </div>
 
     <section class="card overflow-x-auto">
       <h2 class="card-title p-4 pb-2">Posisi terbuka</h2>
-      <table v-if="portfolio?.positions.length" class="table">
+      <Skeleton v-if="!portfolio" class="p-3" :rows="3" />
+      <table v-else-if="portfolio.positions.length" class="table">
         <thead>
           <tr>
             <th>Token</th>
@@ -299,7 +303,8 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
       </div>
 
       <div class="overflow-x-auto">
-        <table v-if="orders.length" class="table">
+        <Skeleton v-if="!ordersLoaded" class="p-3" :rows="5" />
+        <table v-else-if="orders.length" class="table">
           <thead>
             <tr>
               <th>Waktu</th>

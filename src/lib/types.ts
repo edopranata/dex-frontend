@@ -11,6 +11,8 @@ export interface User {
   balance_usd: number
   is_admin: boolean
   two_factor_enabled: boolean
+  /** Still on the temporary password from an admin: only /change-password is allowed. */
+  must_change_password: boolean
   telegram_linked: boolean
   created_at: string | null
 }

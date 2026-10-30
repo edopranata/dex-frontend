@@ -2,47 +2,46 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AnimatedNumber from '@/components/AnimatedNumber.vue'
-import AppIcon, { type IconName } from '@/components/AppIcon.vue'
+import AppIcon from '@/components/AppIcon.vue'
+import CommandPalette from '@/components/CommandPalette.vue'
+import InstallButton from '@/components/InstallButton.vue'
+import SyncStatus from '@/components/SyncStatus.vue'
+import ThemeMenu from '@/components/ThemeMenu.vue'
 import Toaster from '@/components/Toaster.vue'
 import { changeClass, pct, usd } from '@/lib/format'
+import { adminNav as adminArea, type NavItem, tradingNav as trading } from '@/lib/navigation'
 import { useAuthStore } from '@/stores/auth'
 import { usePortfolioStore } from '@/stores/portfolio'
+import { useRefreshStore } from '@/stores/refresh'
 
 const auth = useAuthStore()
 const portfolio = usePortfolioStore()
 const router = useRouter()
 const route = useRoute()
+const refresh = useRefreshStore()
 const menuOpen = ref(false)
+const searchOpen = ref(false)
 
-interface NavItem {
-  to: string
-  label: string
-  icon: IconName
-  exact?: boolean
-  /** Opens outside the SPA (served by Laravel), in a new tab. */
-  external?: boolean
+/** Toolbar breadcrumb: section and the current page's title (route meta). */
+const pageTitle = computed(() => [...route.matched].reverse().find((record) => record.meta.title)?.meta.title ?? '')
+const section = computed(() => (route.path.startsWith('/admin') ? 'Admin area' : route.path.startsWith('/profile') ? 'Akun' : 'Trading'))
+
+function refreshPage() {
+  refresh.refreshAll([() => portfolio.refresh()])
 }
 
-const trading: NavItem[] = [
-  { to: '/', label: 'Ringkasan', icon: 'home', exact: true },
-  { to: '/markets', label: 'Market', icon: 'market' },
-  { to: '/discover', label: 'Temukan', icon: 'discover' },
-  { to: '/signals', label: 'Sinyal', icon: 'signals' },
-  { to: '/whales', label: 'Whale Tracker', icon: 'whale' },
-  { to: '/news', label: 'Berita', icon: 'news' },
-  { to: '/portfolio', label: 'Portofolio', icon: 'portfolio' },
-]
-
-const adminArea: NavItem[] = [
-  { to: '/admin/info', label: 'General Information', icon: 'info' },
-  { to: '/admin/settings', label: 'Pengaturan', icon: 'settings' },
-  { to: '/admin/users', label: 'Pengguna', icon: 'users' },
-  { to: '/admin/backups', label: 'Backup', icon: 'database' },
-  { to: '/admin/logs', label: 'Log', icon: 'file' },
-  { to: '/admin/tasks', label: 'Tugas terjadwal', icon: 'clock' },
-  { to: '/admin/system', label: 'Sistem', icon: 'server' },
-  { to: '/horizon', label: 'Horizon', icon: 'layers', external: true },
-]
+/** ⌘K / Ctrl+K anywhere, or "/" outside text fields, opens the search. */
+function onKeydown(event: KeyboardEvent) {
+  const target = event.target as HTMLElement | null
+  const typing = !!target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    searchOpen.value = !searchOpen.value
+  } else if (event.key === '/' && !typing && !searchOpen.value) {
+    event.preventDefault()
+    searchOpen.value = true
+  }
+}
 
 const initials = computed(() =>
   (auth.user?.name ?? '?')
@@ -76,26 +75,18 @@ watch(
   },
 )
 
-onMounted(() => portfolio.start())
-onBeforeUnmount(() => portfolio.stop())
+onMounted(() => {
+  portfolio.start()
+  window.addEventListener('keydown', onKeydown)
+})
+onBeforeUnmount(() => {
+  portfolio.stop()
+  window.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <template>
   <div class="min-h-screen lg:flex">
-    <!-- Mobile / tablet top bar -->
-    <header class="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-bg/85 px-4 backdrop-blur-md lg:hidden">
-      <button class="btn-ghost p-1.5" :aria-expanded="menuOpen" aria-label="Buka menu" @click="menuOpen = true">
-        <AppIcon name="menu" class="h-5 w-5" />
-      </button>
-      <RouterLink to="/" class="flex items-center gap-2 font-semibold">
-        <img src="/favicon.svg" alt="" class="h-6 w-6" />
-        <span>DEX Simulator</span>
-      </RouterLink>
-      <RouterLink v-if="portfolio.summary" to="/portfolio" class="ml-auto text-right text-xs leading-tight">
-        <AnimatedNumber class="num block font-semibold" :value="portfolio.summary.equity_usd" :format="usd" />
-        <span class="num" :class="changeClass(portfolio.summary.total_pnl)">{{ pct(portfolio.summary.total_pnl_pct) }}</span>
-      </RouterLink>
-    </header>
 
     <Transition name="fade">
       <div v-if="menuOpen" class="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" @click="menuOpen = false" />
@@ -205,7 +196,7 @@ onBeforeUnmount(() => portfolio.stop())
             <span class="mt-0.5 flex gap-1">
               <span v-if="auth.user?.is_admin" class="badge-mini bg-brand/15 text-brand">Admin</span>
               <span class="badge-mini" :class="auth.user?.two_factor_enabled ? 'bg-up/15 text-up' : 'bg-warn/15 text-warn'">{{ auth.user?.two_factor_enabled ? '2FA' : 'Tanpa 2FA' }}</span>
-              <span v-if="auth.user?.telegram_linked" class="badge-mini bg-sky-500/15 text-sky-400">Telegram</span>
+              <span v-if="auth.user?.telegram_linked" class="badge-mini bg-sky-500/15 text-sky-600 dark:text-sky-400">Telegram</span>
             </span>
           </span>
         </RouterLink>
@@ -216,6 +207,49 @@ onBeforeUnmount(() => portfolio.stop())
     </aside>
 
     <div class="min-w-0 flex-1">
+      <!-- Toolbar: stays at the top while the page scrolls -->
+      <header class="sticky top-0 z-30 border-b border-line bg-bg/80 backdrop-blur-md">
+        <div class="flex h-14 items-center gap-2 px-4 sm:px-6 lg:px-8 3xl:px-12">
+          <button class="icon-btn h-9 w-9 lg:hidden" :aria-expanded="menuOpen" aria-label="Buka menu" @click="menuOpen = true">
+            <AppIcon name="menu" class="h-5 w-5" />
+          </button>
+          <RouterLink to="/" class="flex shrink-0 items-center gap-2 font-semibold lg:hidden" aria-label="DEX Simulator">
+            <img src="/favicon.svg" alt="" class="h-7 w-7" />
+            <span class="hidden sm:inline">DEX Simulator</span>
+          </RouterLink>
+
+          <nav class="hidden min-w-0 items-center gap-1.5 text-sm lg:flex" aria-label="Lokasi">
+            <span class="text-muted">{{ section }}</span>
+            <span v-if="pageTitle" class="text-line" aria-hidden="true">/</span>
+            <span class="truncate font-medium">{{ pageTitle }}</span>
+          </nav>
+
+          <button
+            type="button"
+            class="ml-auto flex h-9 items-center gap-2 rounded-lg border border-line bg-panel px-2.5 text-sm text-muted transition-colors hover:border-brand/40 hover:text-text md:w-64 lg:ml-8 xl:w-80"
+            aria-label="Cari token atau halaman"
+            @click="searchOpen = true"
+          >
+            <AppIcon name="search" class="h-4 w-4 shrink-0" />
+            <span class="hidden flex-1 text-left md:inline">Cari token atau halaman…</span>
+            <kbd class="hidden rounded border border-line px-1.5 text-[10px] md:inline">⌘K</kbd>
+          </button>
+
+          <div class="flex items-center gap-1.5 sm:gap-2 lg:ml-auto">
+            <SyncStatus />
+            <button type="button" class="icon-btn h-9 w-9" :disabled="refresh.refreshing" title="Muat ulang data halaman ini" aria-label="Muat ulang data" @click="refreshPage">
+              <AppIcon name="refresh" class="h-[18px] w-[18px]" :class="{ 'animate-spin': refresh.refreshing }" />
+            </button>
+            <ThemeMenu />
+            <InstallButton />
+            <RouterLink v-if="portfolio.summary" to="/portfolio" class="hidden border-l border-line pl-3 text-right text-xs leading-tight sm:block lg:hidden">
+              <AnimatedNumber class="num block font-semibold" :value="portfolio.summary.equity_usd" :format="usd" />
+              <span class="num" :class="changeClass(portfolio.summary.total_pnl)">{{ pct(portfolio.summary.total_pnl_pct) }}</span>
+            </RouterLink>
+          </div>
+        </div>
+      </header>
+
       <main class="px-4 py-6 sm:px-6 lg:px-8 3xl:px-12">
         <RouterView v-slot="{ Component, route: current }">
           <Transition name="page" mode="out-in">
@@ -229,6 +263,7 @@ onBeforeUnmount(() => portfolio.stop())
       </footer>
     </div>
 
+    <CommandPalette v-model="searchOpen" />
     <Toaster />
   </div>
 </template>

@@ -15,6 +15,9 @@ import {
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { price as formatPrice } from '@/lib/format'
 import type { Candle, Levels } from '@/lib/types'
+import { themeColor, useThemeStore } from '@/stores/theme'
+
+const theme = useThemeStore()
 
 const props = defineProps<{ candles: Candle[]; levels?: Levels | null; livePrice?: number | null }>()
 
@@ -92,23 +95,27 @@ function drawLevels() {
   }
 }
 
-onMounted(() => {
-  chart = createChart(container.value!, {
-    autoSize: true,
-    layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#8391a7', fontSize: 11 },
-    grid: { vertLines: { color: 'rgba(36,48,68,0.5)' }, horzLines: { color: 'rgba(36,48,68,0.5)' } },
-    crosshair: { mode: CrosshairMode.Normal },
-    rightPriceScale: { borderColor: '#243044' },
-    timeScale: { borderColor: '#243044', timeVisible: true, secondsVisible: false },
-  })
+/** Canvas colors from the current theme's tokens; re-applied when the theme changes. */
+function themeOptions() {
+  const line = themeColor('line')
+  return {
+    layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: themeColor('muted'), fontSize: 11 },
+    grid: { vertLines: { color: `${line}80` }, horzLines: { color: `${line}80` } },
+    rightPriceScale: { borderColor: line },
+    timeScale: { borderColor: line, timeVisible: true, secondsVisible: false },
+  }
+}
 
-  candleSeries = chart.addSeries(CandlestickSeries, {
-    upColor: '#22c55e',
-    downColor: '#ef4444',
-    borderVisible: false,
-    wickUpColor: '#22c55e',
-    wickDownColor: '#ef4444',
-  })
+function candleColors() {
+  const up = themeColor('up')
+  const down = themeColor('down')
+  return { upColor: up, downColor: down, wickUpColor: up, wickDownColor: down }
+}
+
+onMounted(() => {
+  chart = createChart(container.value!, { autoSize: true, crosshair: { mode: CrosshairMode.Normal }, ...themeOptions() })
+
+  candleSeries = chart.addSeries(CandlestickSeries, { borderVisible: false, ...candleColors() })
   volumeSeries = chart.addSeries(HistogramSeries, { priceScaleId: 'volume', priceFormat: { type: 'volume' }, lastValueVisible: false, priceLineVisible: false })
   chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } })
   ema20Series = chart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 1, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false })
@@ -120,6 +127,13 @@ onMounted(() => {
 onBeforeUnmount(() => chart?.remove())
 
 watch(() => props.candles, render)
+watch(
+  () => theme.resolved,
+  () => {
+    chart?.applyOptions(themeOptions())
+    candleSeries?.applyOptions(candleColors())
+  },
+)
 watch(() => props.levels, drawLevels)
 
 // Move the last candle with the live price between candle syncs.
@@ -139,8 +153,8 @@ watch(
   <div class="relative h-full w-full">
     <div ref="container" class="h-full w-full" />
     <div class="pointer-events-none absolute top-2 left-3 flex gap-3 text-[11px]">
-      <span class="text-amber-400">EMA20</span>
-      <span class="text-violet-400">EMA50</span>
+      <span class="text-amber-600 dark:text-amber-400">EMA20</span>
+      <span class="text-violet-700 dark:text-violet-400">EMA50</span>
     </div>
   </div>
 </template>

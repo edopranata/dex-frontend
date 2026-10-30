@@ -3,11 +3,10 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api, errorMessage } from '@/lib/api'
 
-/** Opened from the "lupa password" email or from an invitation (?invite=1): the user sets their own password. */
+/** Opened from the "lupa password" email: the user sets a new password. */
 const route = useRoute()
 const token = typeof route.query.token === 'string' ? route.query.token : ''
 const email = typeof route.query.email === 'string' ? route.query.email : ''
-const invite = route.query.invite === '1'
 
 const password = ref('')
 const confirmation = ref('')
@@ -25,7 +24,6 @@ async function submit() {
     const { data } = await api.post<{ message: string }>('/auth/reset-password', {
       token,
       email,
-      invite,
       password: password.value,
       password_confirmation: confirmation.value,
     })
@@ -43,12 +41,12 @@ async function submit() {
     <form class="card animate-fade-up w-full max-w-sm space-y-4 p-6 shadow-2xl shadow-black/40" @submit.prevent="submit">
       <div class="flex items-center gap-2">
         <img src="/favicon.svg" alt="" class="h-7 w-7" />
-        <h1 class="text-lg font-semibold">{{ invite ? 'Buat password' : 'Password baru' }}</h1>
+        <h1 class="text-lg font-semibold">Password baru</h1>
       </div>
       <p v-if="!token || !email" class="text-sm text-down">Link tidak lengkap. Buka lagi link dari email Anda.</p>
       <template v-else-if="!done">
         <p class="text-sm text-muted">
-          {{ invite ? 'Selamat datang! Buat password untuk akun' : 'Buat password baru untuk akun' }} <span class="text-text">{{ email }}</span>.
+          Buat password baru untuk akun <span class="text-text">{{ email }}</span>.
         </p>
         <label class="block">
           <span class="mb-1 block text-xs text-muted">Password</span>

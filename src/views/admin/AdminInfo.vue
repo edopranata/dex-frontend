@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { usePageData } from '@/composables/usePolling'
+import { computed, nextTick, ref } from 'vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
 import { useToastStore } from '@/stores/toast'
@@ -36,14 +37,14 @@ async function load() {
   appUrl.value = data.app_url
 }
 
-onMounted(load)
+usePageData(load)
 
 const stateClass: Record<State, string> = {
   ok: 'bg-up/15 text-up',
   warn: 'bg-warn/15 text-warn',
   error: 'bg-down/15 text-down',
   off: 'bg-panel-2 text-muted',
-  info: 'bg-sky-500/15 text-sky-400',
+  info: 'bg-sky-500/15 text-sky-600 dark:text-sky-400',
 }
 
 const dotClass: Record<State, string> = { ok: 'bg-up', warn: 'bg-warn', error: 'bg-down', off: 'bg-muted', info: 'bg-sky-400' }
@@ -90,7 +91,7 @@ function host(url: string): string {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="stack-section">
     <Skeleton v-if="!groups" :rows="4" height="h-32" />
 
     <template v-else>
@@ -115,7 +116,7 @@ function host(url: string): string {
 
       <section v-for="group in groups" :key="group.key" class="space-y-2">
         <h2 class="card-title px-1">{{ group.label }}</h2>
-        <div class="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        <div class="grid gap-section md:grid-cols-2 2xl:grid-cols-3">
           <article v-for="s in group.services" :id="`service-${s.key}`" :key="s.key" class="card flex scroll-mt-20 flex-col gap-2 p-4">
             <div class="flex items-start gap-2">
               <h3 class="mr-auto font-medium">{{ s.name }}</h3>

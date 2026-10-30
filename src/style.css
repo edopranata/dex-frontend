@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* dark: follows the app's theme setting (data-theme on <html>), not only the OS preference. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -96,6 +99,21 @@
     color-scheme: dark;
   }
 
+  /* Light theme: same tokens, light values (up/down/brand darker for contrast on white). */
+  html[data-theme="light"] {
+    color-scheme: light;
+    --color-bg: #f4f6fa;
+    --color-panel: #ffffff;
+    --color-panel-2: #eef2f7;
+    --color-line: #dbe2ec;
+    --color-muted: #5f6f86;
+    --color-text: #0f1726;
+    --color-up: #16a34a;
+    --color-down: #dc2626;
+    --color-warn: #c2700a;
+    --color-brand: #2563eb;
+  }
+
   body {
     @apply bg-bg text-text font-sans antialiased;
   }
@@ -103,6 +121,26 @@
 
 @utility card {
   @apply rounded-xl border border-line bg-panel;
+}
+
+/* One spacing rule between cards everywhere: 16px on phones, 24px from tablets up, the same
+   vertically (stack-section) and in grids (gap-section). Cards themselves use p-4. */
+@utility stack-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  @media (width >= 48rem) {
+    gap: 1.5rem;
+  }
+}
+
+@utility gap-section {
+  gap: 1rem;
+
+  @media (width >= 48rem) {
+    gap: 1.5rem;
+  }
 }
 
 @utility card-title {
@@ -122,7 +160,7 @@
 }
 
 @utility skeleton {
-  @apply animate-shimmer rounded-md bg-[linear-gradient(90deg,var(--color-panel-2)_25%,#22304a_50%,var(--color-panel-2)_75%)] bg-[length:200%_100%];
+  @apply animate-shimmer rounded-md bg-[linear-gradient(90deg,var(--color-panel-2)_25%,var(--color-line)_50%,var(--color-panel-2)_75%)] bg-[length:200%_100%];
 }
 
 @utility btn-primary {

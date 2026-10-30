@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
+import Skeleton from '@/components/Skeleton.vue'
 import RecommendationBadge from '@/components/RecommendationBadge.vue'
 import StatCard from '@/components/StatCard.vue'
 import TokenAvatar from '@/components/TokenAvatar.vue'
@@ -26,6 +27,7 @@ interface Stats {
 
 const stats = ref<Stats | null>(null)
 const signals = ref<Signal[]>([])
+const loaded = ref(false)
 const status = ref<'' | 'open' | 'closed'>('')
 
 async function load() {
@@ -35,6 +37,7 @@ async function load() {
   ])
   stats.value = s.data
   signals.value = l.data.data
+  loaded.value = true
 }
 
 usePolling(load, 30000)
@@ -51,7 +54,7 @@ const statusLabel: Record<string, [string, string]> = {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="stack-section">
     <div>
       <h1 class="text-xl font-semibold">Sinyal & rekam jejak</h1>
       <p class="mt-1 text-sm text-muted">
@@ -60,12 +63,12 @@ const statusLabel: Record<string, [string, string]> = {
       </p>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      <StatCard label="Win rate" :value="stats?.win_rate !== null && stats?.win_rate !== undefined ? `${stats.win_rate}%` : '–'" :hint="`${stats?.wins ?? 0} menang / ${stats?.losses ?? 0} kalah`" />
-      <StatCard label="Total R" :value="stats ? `${stats.total_r > 0 ? '+' : ''}${stats.total_r}R` : '–'" :tone="(stats?.total_r ?? 0) >= 0 ? 'up' : 'down'" />
-      <StatCard label="Rata-rata per trade" :value="stats?.avg_r !== null && stats?.avg_r !== undefined ? `${stats.avg_r}R` : '–'" />
-      <StatCard label="Kena TP1 / TP2 / TP3" :value="stats ? `${stats.tp_hits.tp1} / ${stats.tp_hits.tp2} / ${stats.tp_hits.tp3}` : '–'" :hint="`dari ${stats?.entered ?? 0} sinyal selesai`" />
-      <StatCard label="Sinyal terbuka" :value="String(stats?.open ?? 0)" :hint="`${stats?.not_entered ?? 0} tidak pernah entry`" />
+    <div class="grid grid-cols-2 gap-section lg:grid-cols-5">
+      <StatCard :loading="!stats" label="Win rate" :value="stats?.win_rate !== null && stats?.win_rate !== undefined ? `${stats.win_rate}%` : '–'" :hint="`${stats?.wins ?? 0} menang / ${stats?.losses ?? 0} kalah`" />
+      <StatCard :loading="!stats" label="Total R" :value="stats ? `${stats.total_r > 0 ? '+' : ''}${stats.total_r}R` : '–'" :tone="(stats?.total_r ?? 0) >= 0 ? 'up' : 'down'" />
+      <StatCard :loading="!stats" label="Rata-rata per trade" :value="stats?.avg_r !== null && stats?.avg_r !== undefined ? `${stats.avg_r}R` : '–'" />
+      <StatCard :loading="!stats" label="Kena TP1 / TP2 / TP3" :value="stats ? `${stats.tp_hits.tp1} / ${stats.tp_hits.tp2} / ${stats.tp_hits.tp3}` : '–'" :hint="`dari ${stats?.entered ?? 0} sinyal selesai`" />
+      <StatCard :loading="!stats" label="Sinyal terbuka" :value="String(stats?.open ?? 0)" :hint="`${stats?.not_entered ?? 0} tidak pernah entry`" />
     </div>
 
     <div class="card overflow-x-auto">
@@ -80,7 +83,8 @@ const statusLabel: Record<string, [string, string]> = {
           {{ label }}
         </button>
       </div>
-      <table v-if="signals.length" class="table">
+      <Skeleton v-if="!loaded" class="p-3" :rows="5" />
+      <table v-else-if="signals.length" class="table">
         <thead>
           <tr>
             <th>Dibuat</th>

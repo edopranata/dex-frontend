@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { usePageData } from '@/composables/usePolling'
+import { reactive, ref } from 'vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
 import { useToastStore } from '@/stores/toast'
@@ -103,7 +104,7 @@ async function load() {
   fill(data)
 }
 
-onMounted(() => Promise.all([load(), loadTelegram()]))
+usePageData(() => Promise.all([load(), loadTelegram()]))
 
 function changedValues(group: Group): Record<string, unknown> {
   const values: Record<string, unknown> = {}
@@ -202,10 +203,10 @@ function display(value: unknown): string {
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="stack-section">
     <Skeleton v-if="!groups" :rows="4" height="h-40" />
 
-    <form v-for="(group, gi) in groups ?? []" :key="group.key" class="card animate-fade-up p-5" :style="{ animationDelay: `${gi * 40}ms` }" @submit.prevent="save(group)">
+    <form v-for="(group, gi) in groups ?? []" :key="group.key" class="card animate-fade-up p-4" :style="{ animationDelay: `${gi * 40}ms` }" @submit.prevent="save(group)">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 class="font-semibold">{{ group.label }}</h2>
@@ -241,7 +242,7 @@ function display(value: unknown): string {
           <span class="text-muted">Hari ini <span class="num text-text">{{ p.requests_today }} / {{ p.max_per_day }}</span></span>
           <span class="text-muted">Maks <span class="num text-text">{{ p.max_per_minute }}</span>/menit</span>
           <span class="text-muted">Terakhir berhasil <span class="text-text">{{ when(p.last_success_at) }}</span></span>
-          <span v-if="p.reason" class="w-full text-amber-400">{{ p.reason }} — jeda dicabut otomatis saat pengaturan AI diubah atau tes koneksi berhasil.</span>
+          <span v-if="p.reason" class="w-full text-amber-600 dark:text-amber-400">{{ p.reason }} — jeda dicabut otomatis saat pengaturan AI diubah atau tes koneksi berhasil.</span>
         </div>
       </div>
 
@@ -265,7 +266,7 @@ function display(value: unknown): string {
             <span class="h-2 w-2 rounded-full" :class="!telegram.active ? 'bg-muted' : telegram.webhook?.connected ? 'bg-up' : 'bg-down'" />
             <span class="font-medium">{{ !telegram.active ? 'Nonaktif' : telegram.webhook?.connected ? 'Webhook terhubung' : 'Webhook belum terpasang' }}</span>
           </span>
-          <span v-if="telegram.bot" class="text-muted">Bot <a :href="`https://t.me/${telegram.bot.username}`" target="_blank" rel="noopener" class="text-sky-400 hover:underline">@{{ telegram.bot.username }}</a></span>
+          <span v-if="telegram.bot" class="text-muted">Bot <a :href="`https://t.me/${telegram.bot.username}`" target="_blank" rel="noopener" class="text-sky-600 dark:text-sky-400 hover:underline">@{{ telegram.bot.username }}</a></span>
           <span class="text-muted">Pengguna terhubung <span class="num text-text">{{ telegram.linked_users }}</span></span>
           <span v-if="telegram.webhook?.pending" class="text-muted">Antrean pesan <span class="num text-text">{{ telegram.webhook.pending }}</span></span>
           <button v-if="telegram.active" type="button" class="ml-auto text-brand hover:underline" :disabled="connecting" @click="connectWebhook">

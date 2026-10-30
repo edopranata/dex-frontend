@@ -116,7 +116,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
 </script>
 
 <template>
-  <div v-if="token" class="space-y-6">
+  <div v-if="token" class="stack-section">
     <div class="flex flex-wrap items-center gap-4">
       <TokenAvatar :src="token.image_url" :symbol="token.symbol" :size="44" />
       <div>
@@ -134,7 +134,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
       </div>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div class="grid grid-cols-2 gap-section sm:grid-cols-3 lg:grid-cols-6">
       <div v-for="(label, key, i) in { m5: '5m', h1: '1j', h6: '6j', h24: '24j' }" :key="key" class="card card-hover animate-fade-up px-3 py-2" :style="{ animationDelay: `${i * 40}ms` }">
         <div class="text-[11px] text-muted">Perubahan {{ label }}</div>
         <div class="num font-semibold" :class="changeClass(token.price_change[key])">{{ pct(token.price_change[key]) }}</div>
@@ -149,9 +149,9 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
       </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-3 3xl:grid-cols-4">
-      <div class="min-w-0 space-y-6 lg:col-span-2 3xl:col-span-3">
-        <section class="card animate-fade-up p-3">
+    <div class="grid gap-section lg:grid-cols-3 3xl:grid-cols-4">
+      <div class="min-w-0 stack-section lg:col-span-2 3xl:col-span-3">
+        <section class="card animate-fade-up p-4">
           <div class="mb-2 flex items-center gap-1">
             <button
               v-for="tf in ['15m', '1h', '4h', '1d'] as const"
@@ -229,7 +229,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
         </section>
       </div>
 
-      <div class="min-w-0 space-y-6">
+      <div class="min-w-0 stack-section">
         <OrderPanel :token="token" :balance="auth.user?.balance_usd ?? 0" :position-quantity="position?.quantity ?? 0" :levels="signal ?? analysis?.levels" @placed="afterTrade" />
 
         <div v-if="position" class="card p-4 text-sm">
@@ -250,8 +250,8 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
       </div>
     </div>
   </div>
-  <div v-else class="space-y-6">
+  <div v-else class="stack-section">
     <div class="flex items-center gap-4"><div class="skeleton h-11 w-11 rounded-full" /><Skeleton class="w-64" :rows="2" height="h-4" /></div>
-    <div class="grid gap-6 lg:grid-cols-3 3xl:grid-cols-4"><div class="skeleton h-[420px] lg:col-span-2 3xl:col-span-3" /><Skeleton :rows="5" height="h-20" /></div>
+    <div class="grid gap-section lg:grid-cols-3 3xl:grid-cols-4"><div class="skeleton h-[420px] lg:col-span-2 3xl:col-span-3" /><Skeleton :rows="5" height="h-20" /></div>
   </div>
 </template>

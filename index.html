@@ -1,11 +1,22 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
+    <link rel="apple-touch-icon" href="/pwa/apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0b1018" />
+    <meta name="description" content="Simulator trading kripto DEX dengan harga real dan uang virtual." />
     <title>DEX Simulator</title>
+    <script>
+      // Apply the saved theme before the first paint, so a light theme never flashes dark.
+      try {
+        var mode = localStorage.getItem('theme') || 'system'
+        var dark = mode === 'dark' || (mode === 'system' && !matchMedia('(prefers-color-scheme: light)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

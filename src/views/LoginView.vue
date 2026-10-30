@@ -12,15 +12,15 @@ const email = ref('')
 const password = ref('')
 const error = ref<string | null>(null)
 const loading = ref(false)
-const registrationEnabled = ref(false)
 const passwordResetEnabled = ref(false)
+const resetSent = ref<string | null>(null)
+const requestingReset = ref(false)
 const twoFactor = ref(false)
 const useRecovery = ref(false)
 const code = ref('')
 
 onMounted(async () => {
-  const { data } = await api.get<{ registration_enabled: boolean; password_reset_enabled: boolean }>('/auth/options')
-  registrationEnabled.value = data.registration_enabled
+  const { data } = await api.get<{ password_reset_enabled: boolean }>('/auth/options')
   passwordResetEnabled.value = data.password_reset_enabled
 })
 
@@ -51,6 +51,23 @@ function backToPassword() {
   twoFactor.value = false
   useRecovery.value = false
   code.value = ''
+  resetSent.value = null
+}
+
+/** Lost the authenticator and the recovery codes: a link to switch 2FA off goes to the account's email. */
+async function requestTwoFactorReset() {
+  if (!confirm('Kirim link ke email akun Anda untuk mematikan 2FA? Setelah itu Anda masuk dengan password saja dan sebaiknya mengaktifkan 2FA lagi.')) return
+  requestingReset.value = true
+  error.value = null
+  try {
+    const { data } = await api.post<{ message: string }>('/auth/two-factor/reset-request')
+    resetSent.value = data.message
+  } catch (e) {
+    error.value = errorMessage(e)
+    if (/kedaluwarsa/i.test(error.value)) backToPassword()
+  } finally {
+    requestingReset.value = false
+  }
 }
 
 function toggleRecovery() {
@@ -105,12 +122,15 @@ function toggleRecovery() {
           <button type="button" class="text-muted hover:text-text" @click="backToPassword">← Kembali</button>
           <button type="button" class="text-brand hover:underline" @click="toggleRecovery">{{ useRecovery ? 'Pakai kode authenticator' : 'Pakai kode pemulihan' }}</button>
         </div>
+        <p v-if="resetSent" class="rounded-lg bg-up/10 px-3 py-2.5 text-xs text-up">{{ resetSent }} Buka link di email, lalu masuk lagi.</p>
       </template>
       <p v-if="error" class="text-sm text-down">{{ error }}</p>
       <button class="btn-primary w-full" :disabled="loading">{{ loading ? 'Memeriksa…' : twoFactor ? 'Verifikasi' : 'Masuk' }}</button>
-      <p v-if="registrationEnabled" class="text-center text-sm text-muted">
-        Belum punya akun? <RouterLink to="/register" class="text-brand hover:underline">Daftar</RouterLink>
+      <p v-if="twoFactor && passwordResetEnabled && !resetSent" class="text-center text-xs text-muted">
+        Tidak bisa membuka authenticator dan kode pemulihan hilang?
+        <button type="button" class="text-brand hover:underline" :disabled="requestingReset" @click="requestTwoFactorReset">{{ requestingReset ? 'Mengirim…' : 'Reset 2FA lewat email' }}</button>
       </p>
+      <p v-if="!twoFactor" class="text-center text-xs text-muted">Akun dibuat oleh admin. Belum punya akun? Hubungi admin.</p>
     </form>
   </div>
 </template>

@@ -5,10 +5,9 @@ const route = useRoute()
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="stack-section">
     <div>
-      <p class="text-xs font-semibold tracking-wider text-muted uppercase">Admin area</p>
-      <h1 class="mt-1 text-xl font-semibold">{{ route.meta.title ?? 'Admin' }}</h1>
+      <h1 class="text-xl font-semibold">{{ route.meta.title ?? 'Admin' }}</h1>
       <p v-if="route.meta.description" class="mt-1 text-sm text-muted">{{ route.meta.description }}</p>
     </div>
 

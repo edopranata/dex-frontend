@@ -84,9 +84,9 @@ onBeforeUnmount(stopPolling)
 </script>
 
 <template>
-  <section class="card p-5">
+  <section class="card p-4">
     <div class="flex items-start gap-3">
-      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-sky-500/15 text-sky-400">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-sky-500/15 text-sky-600 dark:text-sky-400">
         <AppIcon name="send" class="h-5 w-5" />
       </span>
       <div>
@@ -104,7 +104,7 @@ onBeforeUnmount(stopPolling)
 
     <div v-else-if="props.status.linked" class="mt-4 space-y-3">
       <p class="text-sm">
-        Terhubung<span v-if="props.status.username"> sebagai <span class="text-sky-400">@{{ props.status.username }}</span></span>
+        Terhubung<span v-if="props.status.username"> sebagai <span class="text-sky-600 dark:text-sky-400">@{{ props.status.username }}</span></span>
         <span class="text-xs text-muted"> · sejak {{ dateTime(props.status.linked_at) }}</span>
       </p>
       <p class="text-xs text-muted">Di Telegram: <span class="num text-text">/status</span> untuk ringkasan portofolio, <span class="num text-text">/stop</span> untuk berhenti.</p>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePageData } from '@/composables/usePolling'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Skeleton from '@/components/Skeleton.vue'
@@ -38,7 +39,7 @@ async function load() {
   truncated.value = data.truncated
 }
 
-load()
+usePageData(load)
 watch([file, level, limit], load)
 watch(autoRefresh, (on) => {
   clearInterval(timer)
@@ -65,7 +66,7 @@ const levelClass: Record<string, string> = {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="stack-section">
     <div class="flex flex-wrap items-center gap-2">
       <AppSelect v-model="file" class="min-w-56" aria-label="File log" :options="files.map((f) => ({ value: f.name, label: f.name, hint: bytes(f.size) }))" />
       <AppSelect v-model="level" aria-label="Level" :options="levelOptions" />

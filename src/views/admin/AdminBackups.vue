@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { usePageData } from '@/composables/usePolling'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
@@ -64,7 +65,7 @@ async function load() {
 /** A daily copy older than ~a day and a half means the last scheduled upload did not happen. */
 const offsiteStale = computed(() => !!offsite.value && now.value - new Date(offsite.value.at).getTime() > 36 * 3600 * 1000)
 
-onMounted(load)
+usePageData(load)
 
 const remaining = computed(() => {
   if (!availableAt.value) return 0
@@ -99,7 +100,7 @@ async function remove(backup: Backup) {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="stack-section">
     <div class="card flex flex-wrap items-center gap-4 p-4">
       <div class="mr-auto">
         <div class="text-sm font-medium">Backup database</div>
@@ -119,7 +120,7 @@ async function remove(backup: Backup) {
       </div>
     </div>
 
-    <div v-if="backups" class="grid gap-4 md:grid-cols-2">
+    <div v-if="backups" class="grid gap-section md:grid-cols-2">
       <div class="card p-4">
         <div class="flex items-center gap-2">
           <div class="mr-auto text-sm font-medium">Salinan di luar VPS (Cloudflare R2)</div>

@@ -22,16 +22,16 @@ const path = computed(() => {
 })
 
 const color = computed(() => {
-  if (props.declining) return '#ef4444'
-  if ((props.change ?? 0) > 0) return '#22c55e'
-  return '#8391a7'
+  if (props.declining) return 'var(--color-down)'
+  if ((props.change ?? 0) > 0) return 'var(--color-up)'
+  return 'var(--color-muted)'
 })
 </script>
 
 <template>
   <div class="flex items-center justify-end gap-2" :title="points.map((p) => `${p.day}: ${p.score}`).join('\n')">
     <svg v-if="path" :width="WIDTH" :height="HEIGHT" :viewBox="`-1 -1 ${WIDTH + 2} ${HEIGHT + 2}`" class="overflow-visible">
-      <path :d="path" fill="none" :stroke="color" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sparkline" />
+      <path :d="path" fill="none" :style="{ stroke: color }" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sparkline" />
     </svg>
     <span v-else class="text-[11px] text-muted">{{ points.length ? '1 hari' : '–' }}</span>
     <span v-if="change !== null && change !== undefined" class="num w-9 text-right text-[11px]" :style="{ color }">

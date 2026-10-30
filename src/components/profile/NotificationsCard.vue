@@ -50,7 +50,7 @@ async function save() {
 </script>
 
 <template>
-  <form class="card p-5" @submit.prevent="save">
+  <form class="card p-4" @submit.prevent="save">
     <h2 class="font-semibold">Notifikasi Telegram</h2>
     <p class="mt-0.5 text-xs text-muted">Pilih apa saja yang dikirim ke Telegram Anda. Berlaku hanya untuk akun ini.</p>
     <p v-if="!telegramLinked" class="mt-3 rounded-lg bg-warn/10 p-2.5 text-xs text-warn">

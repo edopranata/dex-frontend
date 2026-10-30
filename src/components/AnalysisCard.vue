@@ -55,6 +55,8 @@ async function follow() {
     following.value = false
   }
 }
+
+const providerLabel: Record<string, string> = { template: 'otomatis (tanpa AI)', gemini: 'AI · Google Gemini', xai: 'AI · xAI Grok', openai: 'AI · OpenAI' }
 </script>
 
 <template>
@@ -77,7 +79,7 @@ async function follow() {
     <template v-else>
       <p v-if="analysis.summary" class="mt-3 rounded-lg bg-panel-2 p-3 text-sm leading-relaxed">
         {{ analysis.summary }}
-        <span class="mt-1 block text-[11px] text-muted">Ringkasan: {{ analysis.summary_provider === 'template' ? 'otomatis (tanpa AI)' : analysis.summary_provider }}</span>
+        <span class="mt-1 block text-[11px] text-muted">Ringkasan: {{ providerLabel[analysis.summary_provider ?? ''] ?? analysis.summary_provider }}</span>
       </p>
 
       <div class="mt-4 space-y-2.5">

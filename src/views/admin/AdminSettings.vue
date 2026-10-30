@@ -23,9 +23,10 @@ interface Field {
   source?: 'panel' | 'env' | null
 }
 
-interface AiStatus {
-  enabled: boolean
-  provider: string | null
+interface AiProviderStatus {
+  provider: string
+  label: string
+  role: 'primary' | 'fallback'
   model: string | null
   paused_until: string | null
   reason: string | null
@@ -33,6 +34,20 @@ interface AiStatus {
   max_per_day: number
   max_per_minute: number
   last_success_at: string | null
+}
+
+interface AiStatus {
+  enabled: boolean
+  providers: AiProviderStatus[]
+}
+
+interface AiPing {
+  ok: boolean
+  provider: string | null
+  label: string | null
+  model: string | null
+  latency_ms: number | null
+  error: string | null
 }
 
 interface SettingsResponse {
@@ -63,7 +78,7 @@ interface TelegramStatus {
 
 const telegram = ref<TelegramStatus | null>(null)
 const connecting = ref(false)
-const aiResult = ref<{ ok: boolean; provider: string | null; model: string | null; latency_ms: number | null; error: string | null } | null>(null)
+const aiResult = ref<AiPing[] | null>(null)
 
 function fill(data: SettingsResponse) {
   groups.value = data.groups
@@ -123,7 +138,7 @@ async function testAi() {
   testing.value = true
   aiResult.value = null
   try {
-    const { data } = await api.post('/admin/settings/test-ai')
+    const { data } = await api.post<AiPing[]>('/admin/settings/test-ai')
     aiResult.value = data
     await load()
   } catch (error) {
@@ -178,26 +193,38 @@ function display(value: unknown): string {
         </button>
       </div>
 
-      <div v-if="group.key === 'ai' && aiStatus" class="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg bg-panel-2/60 px-3 py-2 text-xs">
-        <span class="flex items-center gap-1.5">
-          <span class="h-2 w-2 rounded-full" :class="!aiStatus.enabled ? 'bg-muted' : aiStatus.paused_until ? 'bg-amber-400' : 'bg-up'" />
-          <span class="font-medium">{{ !aiStatus.enabled ? 'Nonaktif (pakai lexicon/template)' : aiStatus.paused_until ? `Dijeda sampai ${when(aiStatus.paused_until)}` : 'Aktif' }}</span>
-        </span>
-        <span class="text-muted">Request hari ini <span class="num text-text">{{ aiStatus.requests_today }} / {{ aiStatus.max_per_day }}</span></span>
-        <span class="text-muted">Maks <span class="num text-text">{{ aiStatus.max_per_minute }}</span>/menit</span>
-        <span class="text-muted">Terakhir berhasil <span class="text-text">{{ when(aiStatus.last_success_at) }}</span></span>
-        <span v-if="aiStatus.reason" class="w-full text-amber-400">{{ aiStatus.reason }} — jeda dicabut otomatis saat pengaturan AI diubah atau tes koneksi berhasil.</span>
+      <div v-if="group.key === 'ai' && aiStatus" class="mt-3 space-y-1.5">
+        <p v-if="!aiStatus.enabled" class="flex items-center gap-1.5 rounded-lg bg-panel-2/60 px-3 py-2 text-xs">
+          <span class="h-2 w-2 rounded-full bg-muted" />
+          <span class="font-medium">Nonaktif (pakai lexicon/template)</span>
+        </p>
+        <div v-for="p in aiStatus.providers" :key="p.provider" class="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg bg-panel-2/60 px-3 py-2 text-xs">
+          <span class="flex items-center gap-1.5">
+            <span class="h-2 w-2 rounded-full" :class="p.paused_until ? 'bg-amber-400' : 'bg-up'" />
+            <span class="font-medium">{{ p.label }}</span>
+            <span class="badge-mini" :class="p.role === 'primary' ? 'bg-brand/15 text-brand' : 'bg-panel text-muted ring-1 ring-line'">{{ p.role === 'primary' ? 'Utama' : 'Cadangan' }}</span>
+            <span class="text-muted">{{ p.paused_until ? `dijeda sampai ${when(p.paused_until)}` : 'aktif' }}</span>
+          </span>
+          <span class="num text-muted">{{ p.model }}</span>
+          <span class="text-muted">Hari ini <span class="num text-text">{{ p.requests_today }} / {{ p.max_per_day }}</span></span>
+          <span class="text-muted">Maks <span class="num text-text">{{ p.max_per_minute }}</span>/menit</span>
+          <span class="text-muted">Terakhir berhasil <span class="text-text">{{ when(p.last_success_at) }}</span></span>
+          <span v-if="p.reason" class="w-full text-amber-400">{{ p.reason }} — jeda dicabut otomatis saat pengaturan AI diubah atau tes koneksi berhasil.</span>
+        </div>
       </div>
 
       <Transition name="drop">
-        <div
-          v-if="group.key === 'ai' && aiResult"
-          class="mt-3 rounded-lg border p-3 text-sm"
-          :class="aiResult.ok ? 'border-up/40 bg-up/5 text-up' : 'border-down/40 bg-down/5 text-down'"
-        >
-          <template v-if="aiResult.ok">AI merespons: {{ aiResult.provider }} / {{ aiResult.model }} dalam {{ aiResult.latency_ms }} ms.</template>
-          <template v-else>Gagal ({{ aiResult.provider ?? 'nonaktif' }}): {{ aiResult.error }}</template>
-        </div>
+        <ul v-if="group.key === 'ai' && aiResult" class="mt-3 space-y-1.5">
+          <li
+            v-for="r in aiResult"
+            :key="r.provider ?? 'none'"
+            class="rounded-lg border p-3 text-sm"
+            :class="r.ok ? 'border-up/40 bg-up/5 text-up' : 'border-down/40 bg-down/5 text-down'"
+          >
+            <template v-if="r.ok">{{ r.label }} merespons: {{ r.model }} dalam {{ r.latency_ms }} ms.</template>
+            <template v-else>Gagal ({{ r.label ?? 'nonaktif' }}): {{ r.error }}</template>
+          </li>
+        </ul>
       </Transition>
 
       <div v-if="group.key === 'telegram' && telegram" class="mt-3 space-y-2 rounded-lg bg-panel-2/60 px-3 py-2.5 text-xs">

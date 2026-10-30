@@ -41,6 +41,14 @@ interface AiStatus {
   providers: AiProviderStatus[]
 }
 
+interface MailTest {
+  ok: boolean
+  to?: string
+  provider?: string
+  latency_ms?: number
+  error?: string
+}
+
 interface AiPing {
   ok: boolean
   provider: string | null
@@ -79,6 +87,8 @@ interface TelegramStatus {
 const telegram = ref<TelegramStatus | null>(null)
 const connecting = ref(false)
 const aiResult = ref<AiPing[] | null>(null)
+const testingMail = ref(false)
+const mailResult = ref<MailTest | null>(null)
 
 function fill(data: SettingsResponse) {
   groups.value = data.groups
@@ -148,6 +158,19 @@ async function testAi() {
   }
 }
 
+async function testMail() {
+  testingMail.value = true
+  mailResult.value = null
+  try {
+    const { data } = await api.post<MailTest>('/admin/settings/test-mail')
+    mailResult.value = data
+  } catch (error) {
+    mailResult.value = { ok: false, error: errorMessage(error) }
+  } finally {
+    testingMail.value = false
+  }
+}
+
 async function loadTelegram() {
   const { data } = await api.get<TelegramStatus>('/admin/telegram')
   telegram.value = data
@@ -191,7 +214,16 @@ function display(value: unknown): string {
         <button v-if="group.key === 'ai'" type="button" class="btn-ghost text-xs" :disabled="testing" @click="testAi">
           {{ testing ? 'Menguji…' : 'Tes koneksi AI' }}
         </button>
+        <button v-if="group.key === 'mail'" type="button" class="btn-ghost text-xs" :disabled="testingMail" @click="testMail">
+          {{ testingMail ? 'Mengirim…' : 'Kirim email tes' }}
+        </button>
       </div>
+
+      <p v-if="group.key === 'mail' && mailResult" class="mt-3 flex items-start gap-1.5 rounded-lg bg-panel-2/60 px-3 py-2 text-xs">
+        <span class="mt-1 h-2 w-2 shrink-0 rounded-full" :class="mailResult.ok ? 'bg-up' : 'bg-down'" />
+        <span v-if="mailResult.ok">Email tes terkirim ke <span class="text-text">{{ mailResult.to }}</span> via {{ mailResult.provider }} ({{ mailResult.latency_ms }} ms). Cek kotak masuk dan folder spam.</span>
+        <span v-else class="break-words text-down">{{ mailResult.error }}</span>
+      </p>
 
       <div v-if="group.key === 'ai' && aiStatus" class="mt-3 space-y-1.5">
         <p v-if="!aiStatus.enabled" class="flex items-center gap-1.5 rounded-lg bg-panel-2/60 px-3 py-2 text-xs">

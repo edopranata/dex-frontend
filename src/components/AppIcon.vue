@@ -23,6 +23,7 @@ const paths = {
   layers: 'M12 3 2 8l10 5 10-5zM2 13l10 5 10-5M2 18l10 5 10-5',
   key: 'M15 7a4 4 0 1 1-3.87 5H3v4h3v-2h2v2h3.13A4 4 0 0 1 15 7zm1 4h.01',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l2 2H4zm4 4a2 2 0 0 0 4 0',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-10v6m0-9h.01',
 } as const
 
 export type IconName = keyof typeof paths

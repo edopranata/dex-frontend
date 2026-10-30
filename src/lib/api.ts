@@ -24,7 +24,7 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(undefined, (error: AxiosError) => {
   if (error.response?.status === 419) csrfReady = false
   const isSessionCheck = error.config?.url === '/auth/me'
-  if (error.response?.status === 401 && !isSessionCheck && !['/login', '/register'].includes(location.pathname)) {
+  if (error.response?.status === 401 && !isSessionCheck && !['/login', '/register', '/forgot-password', '/reset-password'].includes(location.pathname)) {
     location.href = '/login'
   }
   return Promise.reject(error)

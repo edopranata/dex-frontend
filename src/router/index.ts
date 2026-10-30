@@ -17,6 +17,8 @@ const router = createRouter({
   routes: [
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { guest: true } },
     { path: '/register', name: 'register', component: () => import('@/views/RegisterView.vue'), meta: { guest: true } },
+    { path: '/forgot-password', name: 'forgot-password', component: () => import('@/views/ForgotPasswordView.vue'), meta: { guest: true } },
+    { path: '/reset-password', name: 'reset-password', component: () => import('@/views/ResetPasswordView.vue'), meta: { guest: true } },
     {
       path: '/',
       component: () => import('@/layouts/AppLayout.vue'),
@@ -35,7 +37,8 @@ const router = createRouter({
           component: () => import('@/views/admin/AdminLayout.vue'),
           meta: { admin: true },
           children: [
-            { path: '', redirect: '/admin/settings' },
+            { path: '', redirect: '/admin/info' },
+            { path: 'info', name: 'admin-info', component: () => import('@/views/admin/AdminInfo.vue'), meta: { title: 'General Information', description: 'Layanan pihak ke-3 yang dipakai aplikasi: alamat dashboard, biaya, tempat pengaturan, dan statusnya.' } },
             { path: 'settings', name: 'admin-settings', component: () => import('@/views/admin/AdminSettings.vue'), meta: { title: 'Pengaturan', description: 'Pengaturan aplikasi yang berlaku untuk semua pengguna. Perubahan langsung dipakai tanpa deploy ulang.' } },
             { path: 'users', name: 'admin-users', component: () => import('@/views/admin/AdminUsers.vue'), meta: { title: 'Pengguna', description: 'Tambah akun, atur peran admin, reset password atau 2FA.' } },
             { path: 'backups', name: 'admin-backups', component: () => import('@/views/admin/AdminBackups.vue'), meta: { title: 'Backup', description: 'Backup database harian otomatis, backup manual, dan unduhan file.' } },

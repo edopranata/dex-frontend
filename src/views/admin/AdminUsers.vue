@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import AppSwitch from '@/components/AppSwitch.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
@@ -26,21 +27,39 @@ const toast = useToastStore()
 const users = ref<AdminUser[] | null>(null)
 const showForm = ref(false)
 const saving = ref(false)
-const form = reactive({ name: '', email: '', password: '', is_admin: false })
+/** Email is set up (Pengaturan → Email): new users get an invitation link and set their own password. */
+const mailEnabled = ref(false)
+const form = reactive({ name: '', email: '', password: '', is_admin: false, invite: false })
+
+interface InviteResult {
+  sent: boolean
+  error: string | null
+}
 
 async function load() {
   const { data } = await api.get<{ data: AdminUser[] }>('/admin/users')
   users.value = data.data
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  const { data } = await api.get<{ password_reset_enabled: boolean }>('/auth/options')
+  mailEnabled.value = data.password_reset_enabled
+  form.invite = mailEnabled.value
+})
+
+function inviteToast(email: string, invite: InviteResult) {
+  if (invite.sent) toast.success(`Undangan terkirim ke ${email}`, 'Link berlaku 3 hari; pemiliknya membuat password sendiri.')
+  else toast.error('Email undangan gagal terkirim', `${invite.error ?? ''} Cek Pengaturan → Email, lalu klik "Kirim undangan".`)
+}
 
 async function create() {
   saving.value = true
   try {
-    await api.post('/admin/users', form)
-    toast.success(`Akun ${form.email} dibuat`, 'Kirim email & password ke pemiliknya lewat jalur yang aman.')
-    Object.assign(form, { name: '', email: '', password: '', is_admin: false })
+    const { data } = await api.post<{ invite: InviteResult | null }>('/admin/users', form.invite ? { ...form, password: undefined } : form)
+    if (data.invite) inviteToast(form.email, data.invite)
+    else toast.success(`Akun ${form.email} dibuat`, 'Kirim email & password ke pemiliknya lewat jalur yang aman.')
+    Object.assign(form, { name: '', email: '', password: '', is_admin: false, invite: mailEnabled.value })
     showForm.value = false
     await load()
   } catch (error) {
@@ -57,6 +76,15 @@ async function update(user: AdminUser, payload: Partial<AdminUser> & { password?
     await load()
   } catch (error) {
     toast.error('Gagal', errorMessage(error))
+  }
+}
+
+async function sendInvite(user: AdminUser) {
+  try {
+    const { data } = await api.post<{ invite: InviteResult }>(`/admin/users/${user.id}/invite`)
+    inviteToast(user.email, data.invite)
+  } catch (error) {
+    toast.error('Gagal mengirim undangan', errorMessage(error))
   }
 }
 
@@ -91,12 +119,20 @@ async function remove(user: AdminUser) {
     </div>
 
     <Transition name="drop">
-      <form v-if="showForm" class="card grid gap-3 p-4 md:grid-cols-[1fr_1fr_1fr_auto_auto] md:items-end" @submit.prevent="create">
-        <label class="block"><span class="mb-1 block text-xs text-muted">Nama</span><input v-model="form.name" class="w-full" required /></label>
-        <label class="block"><span class="mb-1 block text-xs text-muted">Email</span><input v-model="form.email" type="email" class="w-full" required /></label>
-        <label class="block"><span class="mb-1 block text-xs text-muted">Password</span><input v-model="form.password" type="password" class="w-full" minlength="8" autocomplete="new-password" required /></label>
-        <label class="flex items-center gap-2 py-2 text-sm"><input v-model="form.is_admin" type="checkbox" class="h-4 w-4 p-0" /> Admin</label>
-        <button class="btn-primary" :disabled="saving">{{ saving ? 'Menyimpan…' : 'Buat akun' }}</button>
+      <form v-if="showForm" class="card space-y-3 p-4" @submit.prevent="create">
+        <div class="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto_auto] md:items-end">
+          <label class="block"><span class="mb-1 block text-xs text-muted">Nama</span><input v-model="form.name" class="w-full" required /></label>
+          <label class="block"><span class="mb-1 block text-xs text-muted">Email</span><input v-model="form.email" type="email" class="w-full" required /></label>
+          <label v-if="!form.invite" class="block"><span class="mb-1 block text-xs text-muted">Password</span><input v-model="form.password" type="password" class="w-full" minlength="8" autocomplete="new-password" required /></label>
+          <p v-else class="pb-2 text-xs text-muted">Password dibuat sendiri oleh pemilik akun lewat link di email.</p>
+          <label class="flex items-center gap-2 py-2 text-sm"><input v-model="form.is_admin" type="checkbox" class="h-4 w-4 p-0" /> Admin</label>
+          <button class="btn-primary" :disabled="saving">{{ saving ? 'Menyimpan…' : form.invite ? 'Buat & kirim undangan' : 'Buat akun' }}</button>
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <AppSwitch v-model="form.invite" :disabled="!mailEnabled" label="Kirim undangan lewat email" />
+          <span :class="mailEnabled ? '' : 'text-muted'">Kirim undangan lewat email</span>
+          <span v-if="!mailEnabled" class="text-xs text-muted">— aktifkan dulu di Pengaturan → Email (SMTP)</span>
+        </div>
       </form>
     </Transition>
 
@@ -132,7 +168,13 @@ async function remove(user: AdminUser) {
             <td class="text-xs whitespace-nowrap text-muted">{{ dateTime(u.created_at) }}</td>
             <td class="whitespace-nowrap text-right text-xs">
               <span v-if="u.is_system" class="text-muted">Dikelola aplikasi</span>
-              <button v-else class="text-brand hover:underline" @click="resetPassword(u)">Reset password</button>
+              <template v-else>
+                <template v-if="mailEnabled">
+                  <button class="text-brand hover:underline" title="Kirim link untuk membuat password (berlaku 3 hari)" @click="sendInvite(u)">Kirim undangan</button>
+                  <span class="mx-1 text-line">|</span>
+                </template>
+                <button class="text-brand hover:underline" @click="resetPassword(u)">Reset password</button>
+              </template>
               <template v-if="u.id !== auth.user?.id && !u.is_system">
                 <span class="mx-1 text-line">|</span>
                 <button class="text-brand hover:underline" @click="update(u, { is_admin: !u.is_admin }, u.is_admin ? `${u.email} bukan admin lagi` : `${u.email} sekarang admin`)">

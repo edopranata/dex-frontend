@@ -13,13 +13,15 @@ const password = ref('')
 const error = ref<string | null>(null)
 const loading = ref(false)
 const registrationEnabled = ref(false)
+const passwordResetEnabled = ref(false)
 const twoFactor = ref(false)
 const useRecovery = ref(false)
 const code = ref('')
 
 onMounted(async () => {
-  const { data } = await api.get<{ registration_enabled: boolean }>('/auth/options')
+  const { data } = await api.get<{ registration_enabled: boolean; password_reset_enabled: boolean }>('/auth/options')
   registrationEnabled.value = data.registration_enabled
+  passwordResetEnabled.value = data.password_reset_enabled
 })
 
 function enter() {
@@ -72,7 +74,10 @@ function toggleRecovery() {
           <input v-model="email" type="email" class="w-full" autocomplete="email" required />
         </label>
         <label class="block">
-          <span class="mb-1 block text-xs text-muted">Password</span>
+          <span class="mb-1 flex justify-between text-xs text-muted">
+            Password
+            <RouterLink v-if="passwordResetEnabled" :to="{ name: 'forgot-password', query: email ? { email } : {} }" class="text-brand hover:underline">Lupa password?</RouterLink>
+          </span>
           <input v-model="password" type="password" class="w-full" autocomplete="current-password" required />
         </label>
       </template>

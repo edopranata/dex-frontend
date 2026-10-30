@@ -34,6 +34,7 @@ const trading: NavItem[] = [
 ]
 
 const adminArea: NavItem[] = [
+  { to: '/admin/info', label: 'General Information', icon: 'info' },
   { to: '/admin/settings', label: 'Pengaturan', icon: 'settings' },
   { to: '/admin/users', label: 'Pengguna', icon: 'users' },
   { to: '/admin/backups', label: 'Backup', icon: 'database' },

@@ -13,6 +13,7 @@ interface AdminUser {
   email: string
   balance_usd: number
   is_admin: boolean
+  is_system: boolean
   positions_count: number
   orders_count: number
   created_at: string
@@ -121,7 +122,8 @@ async function remove(user: AdminUser) {
             <td class="num text-right">{{ usd(u.balance_usd) }}</td>
             <td class="num text-right">{{ u.positions_count }} / {{ u.orders_count }}</td>
             <td>
-              <span class="rounded px-1.5 py-0.5 text-xs" :class="u.is_admin ? 'bg-brand/15 text-brand' : 'bg-panel-2 text-muted'">{{ u.is_admin ? 'Admin' : 'Pengguna' }}</span>
+              <span v-if="u.is_system" class="rounded bg-warn/15 px-1.5 py-0.5 text-xs text-warn" title="Akun otomatis pengukur kinerja sinyal; tidak bisa login">Sistem</span>
+              <span v-else class="rounded px-1.5 py-0.5 text-xs" :class="u.is_admin ? 'bg-brand/15 text-brand' : 'bg-panel-2 text-muted'">{{ u.is_admin ? 'Admin' : 'Pengguna' }}</span>
             </td>
             <td class="whitespace-nowrap">
               <span class="rounded px-1.5 py-0.5 text-xs" :class="u.two_factor_enabled ? 'bg-up/15 text-up' : 'bg-panel-2 text-muted'">{{ u.two_factor_enabled ? '2FA aktif' : 'Tanpa 2FA' }}</span>
@@ -129,8 +131,9 @@ async function remove(user: AdminUser) {
             </td>
             <td class="text-xs whitespace-nowrap text-muted">{{ dateTime(u.created_at) }}</td>
             <td class="whitespace-nowrap text-right text-xs">
-              <button class="text-brand hover:underline" @click="resetPassword(u)">Reset password</button>
-              <template v-if="u.id !== auth.user?.id">
+              <span v-if="u.is_system" class="text-muted">Dikelola aplikasi</span>
+              <button v-else class="text-brand hover:underline" @click="resetPassword(u)">Reset password</button>
+              <template v-if="u.id !== auth.user?.id && !u.is_system">
                 <span class="mx-1 text-line">|</span>
                 <button class="text-brand hover:underline" @click="update(u, { is_admin: !u.is_admin }, u.is_admin ? `${u.email} bukan admin lagi` : `${u.email} sekarang admin`)">
                   {{ u.is_admin ? 'Cabut admin' : 'Jadikan admin' }}

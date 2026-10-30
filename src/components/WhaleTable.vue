@@ -2,6 +2,7 @@
 import { explorerUrl, price, qty, shortAddress, timeAgo, usd } from '@/lib/format'
 import type { WhaleTrade } from '@/lib/types'
 import TokenAvatar from './TokenAvatar.vue'
+import { tokenPath } from '@/lib/links'
 
 defineProps<{ trades: WhaleTrade[]; chain?: string; showToken?: boolean }>()
 </script>
@@ -24,7 +25,7 @@ defineProps<{ trades: WhaleTrade[]; chain?: string; showToken?: boolean }>()
         <tr v-for="trade in trades" :key="trade.id" class="transition-colors hover:bg-panel-2/50">
           <td class="whitespace-nowrap text-xs text-muted">{{ timeAgo(trade.traded_at) }}</td>
           <td v-if="showToken">
-            <RouterLink v-if="trade.token" :to="`/tokens/${trade.token.id}`" class="flex items-center gap-2 hover:text-brand">
+            <RouterLink v-if="trade.token" :to="tokenPath(trade.token)" class="flex items-center gap-2 hover:text-brand">
               <TokenAvatar :src="trade.token.image_url" :symbol="trade.token.symbol" :size="20" />
               {{ trade.token.symbol }}
             </RouterLink>

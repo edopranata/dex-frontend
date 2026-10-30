@@ -4,6 +4,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api } from '@/lib/api'
 import { bytes } from '@/lib/format'
+import AppSelect from '@/components/AppSelect.vue'
 
 interface Entry {
   time: string
@@ -16,6 +17,7 @@ interface Entry {
 const files = ref<{ name: string; size: number }[]>([])
 const file = ref<string>('')
 const level = ref('')
+const levelOptions = [{ value: '', label: 'Semua level' }, ...['error', 'warning', 'info', 'debug', 'critical'].map((l) => ({ value: l, label: l }))]
 const search = ref('')
 const limit = ref(200)
 const entries = ref<Entry[] | null>(null)
@@ -65,22 +67,13 @@ const levelClass: Record<string, string> = {
 <template>
   <div class="space-y-4">
     <div class="flex flex-wrap items-center gap-2">
-      <select v-model="file" class="min-w-56">
-        <option v-for="f in files" :key="f.name" :value="f.name">{{ f.name }} ({{ bytes(f.size) }})</option>
-      </select>
-      <select v-model="level">
-        <option value="">Semua level</option>
-        <option v-for="l in ['error', 'warning', 'info', 'debug', 'critical']" :key="l" :value="l">{{ l }}</option>
-      </select>
+      <AppSelect v-model="file" class="min-w-56" aria-label="File log" :options="files.map((f) => ({ value: f.name, label: f.name, hint: bytes(f.size) }))" />
+      <AppSelect v-model="level" aria-label="Level" :options="levelOptions" />
       <form class="flex gap-2" @submit.prevent="load">
         <input v-model="search" placeholder="Cari teks…" class="w-48" />
         <button class="btn-ghost">Cari</button>
       </form>
-      <select v-model.number="limit">
-        <option :value="100">100 entri</option>
-        <option :value="200">200 entri</option>
-        <option :value="500">500 entri</option>
-      </select>
+      <AppSelect v-model="limit" aria-label="Jumlah entri" :options="[100, 200, 500].map((n) => ({ value: n, label: `${n} entri` }))" />
       <label class="flex items-center gap-2 text-sm text-muted"><input v-model="autoRefresh" type="checkbox" class="h-4 w-4 p-0" /> Auto refresh 10 dtk</label>
       <a v-if="file" :href="`/api/admin/logs/${file}/download`" class="btn-ghost ml-auto text-xs" download>Download file</a>
     </div>

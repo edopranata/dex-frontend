@@ -3,6 +3,9 @@ import { reactive, ref, watch } from 'vue'
 import { api, errorMessage } from '@/lib/api'
 import type { NotificationSettings } from '@/lib/types'
 import { useToastStore } from '@/stores/toast'
+import AppSelect from '@/components/AppSelect.vue'
+import type { SelectOption } from '@/components/AppSelect.vue'
+import AppSwitch from '@/components/AppSwitch.vue'
 
 const props = defineProps<{ settings: NotificationSettings; isAdmin: boolean; telegramLinked: boolean }>()
 const emit = defineEmits<{ saved: [settings: NotificationSettings] }>()
@@ -26,6 +29,10 @@ const toggles: { key: ToggleKey; label: string; hint: string; adminOnly?: boolea
   { key: 'system', label: 'Operasional server', hint: 'Job/jadwal gagal, AI dijeda, watchdog, backup gagal.', adminOnly: true },
 ]
 
+const signalLevels: SelectOption<NotificationSettings['signal_min']>[] = [
+  { value: 'BUY', label: 'Buy & Strong Buy' },
+  { value: 'STRONG_BUY', label: 'Hanya Strong Buy' },
+]
 const hours = Array.from({ length: 24 }, (_, h) => ({ value: h, label: `${String(h).padStart(2, '0')}:00` }))
 
 async function save() {
@@ -57,17 +64,7 @@ async function save() {
             <p class="text-sm">{{ t.label }}</p>
             <p class="text-[11px] text-muted">{{ t.hint }}</p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="form[t.key]"
-            :aria-label="t.label"
-            class="relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200"
-            :class="form[t.key] ? 'bg-up' : 'bg-panel-2 ring-1 ring-line'"
-            @click="form[t.key] = !form[t.key]"
-          >
-            <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200" :class="form[t.key] ? 'translate-x-5' : ''" />
-          </button>
+          <AppSwitch v-model="form[t.key]" :label="t.label" />
         </li>
       </template>
     </ul>
@@ -75,27 +72,18 @@ async function save() {
     <div class="mt-4 grid gap-4 sm:grid-cols-2">
       <label class="block">
         <span class="mb-1 block text-xs text-muted">Sinyal yang dikirim</span>
-        <select v-model="form.signal_min" class="w-full">
-          <option value="BUY">Buy &amp; Strong Buy</option>
-          <option value="STRONG_BUY">Hanya Strong Buy</option>
-        </select>
+        <AppSelect v-model="form.signal_min" class="w-full" :options="signalLevels" />
       </label>
       <label class="block">
         <span class="mb-1 block text-xs text-muted">Jam ringkasan harian (WIB)</span>
-        <select v-model.number="form.daily_summary_hour" class="w-full" :disabled="!form.daily_summary">
-          <option v-for="h in hours" :key="h.value" :value="h.value">{{ h.label }}</option>
-        </select>
+        <AppSelect v-model="form.daily_summary_hour" class="w-full" :options="hours" :disabled="!form.daily_summary" />
       </label>
       <div class="sm:col-span-2">
         <span class="mb-1 block text-xs text-muted">Jam tenang (WIB) — pesan masuk tanpa bunyi, kecuali stop loss, rug pull &amp; operasional</span>
         <div class="flex items-center gap-2">
-          <select v-model.number="form.quiet_start_hour" class="flex-1">
-            <option v-for="h in hours" :key="h.value" :value="h.value">{{ h.label }}</option>
-          </select>
+          <AppSelect v-model="form.quiet_start_hour" class="flex-1" aria-label="Jam tenang mulai" :options="hours" />
           <span class="text-muted">–</span>
-          <select v-model.number="form.quiet_end_hour" class="flex-1">
-            <option v-for="h in hours" :key="h.value" :value="h.value">{{ h.label }}</option>
-          </select>
+          <AppSelect v-model="form.quiet_end_hour" class="flex-1" aria-label="Jam tenang selesai" :options="hours" />
         </div>
         <span class="mt-1 block text-[11px] text-muted">{{ form.quiet_start_hour === form.quiet_end_hour ? 'Jam tenang nonaktif (jam mulai = selesai).' : 'Pilih jam yang sama untuk mematikan jam tenang.' }}</span>
       </div>

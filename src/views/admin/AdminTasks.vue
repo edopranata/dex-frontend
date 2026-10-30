@@ -6,6 +6,7 @@ import { usePolling } from '@/composables/usePolling'
 import { api, errorMessage } from '@/lib/api'
 import { dateTime, duration, fromNow, timeAgo } from '@/lib/format'
 import { useToastStore } from '@/stores/toast'
+import AppSelect from '@/components/AppSelect.vue'
 
 interface Task {
   command: string
@@ -103,9 +104,7 @@ function scheduleLabel(schedule: string | null): string {
     <div class="card flex flex-wrap items-end gap-3 p-4">
       <label class="block">
         <span class="mb-1 block text-xs text-muted">Jalankan perintah sekarang (lewat antrean)</span>
-        <select v-model="manualCommand" class="min-w-56">
-          <option v-for="c in allowed" :key="c" :value="c">{{ c }}</option>
-        </select>
+        <AppSelect v-model="manualCommand" class="min-w-56" :options="allowed.map((c) => ({ value: c, label: c }))" />
       </label>
       <button class="btn-primary" @click="run(manualCommand)">Jalankan</button>
       <p class="text-xs text-muted">market:bootstrap mengisi ulang semua data (±5 menit).</p>
@@ -153,14 +152,8 @@ function scheduleLabel(schedule: string | null): string {
     <section class="card overflow-x-auto">
       <div class="flex flex-wrap items-center gap-2 p-4 pb-2">
         <h2 class="card-title mr-auto">Riwayat eksekusi (100 terakhir)</h2>
-        <select v-model="filterCommand">
-          <option value="">Semua perintah</option>
-          <option v-for="t in tasks ?? []" :key="t.command" :value="t.command">{{ t.command }}</option>
-        </select>
-        <select v-model="filterStatus">
-          <option value="">Semua status</option>
-          <option v-for="(label, key) in statusLabel" :key="key" :value="key">{{ label }}</option>
-        </select>
+        <AppSelect v-model="filterCommand" aria-label="Perintah" :options="[{ value: '', label: 'Semua perintah' }, ...(tasks ?? []).map((t) => ({ value: t.command, label: t.command }))]" />
+        <AppSelect v-model="filterStatus" aria-label="Status" :options="[{ value: '', label: 'Semua status' }, ...Object.entries(statusLabel).map(([value, label]) => ({ value, label }))]" />
       </div>
       <table v-if="runs.length" class="table">
         <thead>

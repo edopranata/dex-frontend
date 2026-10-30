@@ -11,6 +11,8 @@ import { api, errorMessage } from '@/lib/api'
 import { changeClass, pct, price, timeAgo, usd } from '@/lib/format'
 import type { Candidate, CandidateSource } from '@/lib/types'
 import { useToastStore } from '@/stores/toast'
+import { tokenPath } from '@/lib/links'
+import AppSelect from '@/components/AppSelect.vue'
 
 const toast = useToastStore()
 const candidates = ref<Candidate[] | null>(null)
@@ -18,6 +20,13 @@ const counts = ref<Record<string, number>>({})
 const lastRunAt = ref<string | null>(null)
 const status = ref<'' | 'tracked' | 'rejected'>('')
 const chain = ref('')
+const chainOptions = [
+  { value: '', label: 'Semua jaringan' },
+  { value: 'solana', label: 'Solana' },
+  { value: 'base', label: 'Base' },
+  { value: 'ethereum', label: 'Ethereum' },
+  { value: 'bsc', label: 'BNB Chain' },
+]
 const tracking = ref<number | null>(null)
 const expanded = ref<Set<number>>(new Set())
 
@@ -118,13 +127,7 @@ function ageDays(iso: string | null) {
           {{ t.label }} <span class="num ml-1 text-xs text-muted">{{ t.count }}</span>
         </button>
       </div>
-      <select v-model="chain">
-        <option value="">Semua jaringan</option>
-        <option value="solana">Solana</option>
-        <option value="base">Base</option>
-        <option value="ethereum">Ethereum</option>
-        <option value="bsc">BNB Chain</option>
-      </select>
+      <AppSelect v-model="chain" aria-label="Jaringan" :options="chainOptions" />
     </div>
 
     <div v-if="candidates === null" class="grid gap-4 lg:grid-cols-2 3xl:grid-cols-3 4xl:grid-cols-4">
@@ -243,7 +246,7 @@ function ageDays(iso: string | null) {
           <template v-if="c.status === 'tracked' && c.token_id">
             <RecommendationBadge :value="c.token?.recommendation" />
             <span v-if="c.token?.final_score !== null && c.token?.final_score !== undefined" class="num text-xs text-muted">{{ c.token.final_score }}/100</span>
-            <RouterLink :to="`/tokens/${c.token_id}`" class="btn-primary ml-auto py-1.5 text-xs">Lihat analisis →</RouterLink>
+            <RouterLink :to="tokenPath(c.token, c.token_id)" class="btn-primary ml-auto py-1.5 text-xs">Lihat analisis →</RouterLink>
           </template>
           <template v-else-if="c.status === 'candidate'">
             <a v-if="c.url" :href="c.url" target="_blank" rel="noopener" class="text-xs text-muted transition-colors hover:text-brand">DEX Screener ↗</a>

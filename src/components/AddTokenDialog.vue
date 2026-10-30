@@ -4,6 +4,7 @@ import { api, errorMessage } from '@/lib/api'
 import { useToastStore } from '@/stores/toast'
 import { price, usd } from '@/lib/format'
 import TokenAvatar from './TokenAvatar.vue'
+import AppSelect from '@/components/AppSelect.vue'
 
 interface SearchResult {
   chain_id: string
@@ -98,9 +99,7 @@ async function add(chainId: string, address: string) {
       <div class="mt-5 border-t border-line pt-4">
         <div class="card-title mb-2">Atau tempel alamat token / pair</div>
         <form class="flex flex-col gap-2 sm:flex-row" @submit.prevent="add(manualChain, manualAddress.trim())">
-          <select v-model="manualChain" class="sm:w-40">
-            <option v-for="c in chains" :key="c.id" :value="c.id">{{ c.label }}</option>
-          </select>
+          <AppSelect v-model="manualChain" class="sm:w-40" aria-label="Jaringan" :options="chains.map((c) => ({ value: c.id, label: c.label }))" />
           <input v-model="manualAddress" class="num w-full" placeholder="0x… atau alamat Solana" />
           <button class="btn-primary shrink-0" :disabled="!manualAddress || adding !== null">Tambah</button>
         </form>

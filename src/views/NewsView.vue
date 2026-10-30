@@ -5,9 +5,17 @@ import NewsList from '@/components/NewsList.vue'
 import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
 import type { NewsItem, Paginated } from '@/lib/types'
+import AppSelect from '@/components/AppSelect.vue'
+import type { SelectOption } from '@/components/AppSelect.vue'
 
 const items = ref<NewsItem[]>([])
 const sentiment = ref<'' | 'bullish' | 'neutral' | 'bearish'>('')
+const sentimentOptions: SelectOption<typeof sentiment.value>[] = [
+  { value: '', label: 'Semua sentimen' },
+  { value: 'bullish', label: 'Bullish' },
+  { value: 'neutral', label: 'Netral' },
+  { value: 'bearish', label: 'Bearish' },
+]
 
 async function load() {
   const { data } = await api.get<Paginated<NewsItem>>('/news', { params: sentiment.value ? { sentiment: sentiment.value } : {} })
@@ -22,12 +30,7 @@ watch(sentiment, load)
   <div class="space-y-4">
     <div class="flex flex-wrap items-center gap-3">
       <h1 class="text-xl font-semibold">Berita & sentimen</h1>
-      <select v-model="sentiment">
-        <option value="">Semua sentimen</option>
-        <option value="bullish">Bullish</option>
-        <option value="neutral">Netral</option>
-        <option value="bearish">Bearish</option>
-      </select>
+      <AppSelect v-model="sentiment" aria-label="Sentimen" :options="sentimentOptions" />
     </div>
     <p class="text-sm text-muted">
       Sumber: CoinDesk, Cointelegraph, Decrypt, The Block (RSS). Sentimen dinilai AI (Gemini/OpenAI) jika API key diisi, selain itu memakai kamus kata.

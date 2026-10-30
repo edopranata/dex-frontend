@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AnalysisCard from '@/components/AnalysisCard.vue'
 import CandleChart from '@/components/CandleChart.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -18,8 +19,11 @@ import type { Analysis, Candle, NewsItem, Order, Portfolio, Signal, Token, Whale
 import { useAuthStore } from '@/stores/auth'
 import { usePortfolioStore } from '@/stores/portfolio'
 
+/** Slug such as "JOB-SOL", or an old numeric id that is swapped for the slug once the token loads. */
 const props = defineProps<{ id: string }>()
 const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 const token = ref<Token | null>(null)
 const analysis = ref<Analysis | null>(null)
@@ -33,14 +37,30 @@ const orders = ref<Order[]>([])
 const portfolio = ref<Portfolio | null>(null)
 const tab = ref<'whales' | 'news' | 'orders'>('whales')
 
-const position = computed(() => portfolio.value?.positions.find((p) => p.token_id === Number(props.id)) ?? null)
+const position = computed(() => portfolio.value?.positions.find((p) => p.token_id === token.value?.id) ?? null)
 
-async function loadToken() {
+let tokenLoading: Promise<void> = Promise.resolve()
+
+/** Whether the loaded token is the one in the URL (by slug, or by the id of an old link). */
+function isCurrent(t: Token | null): t is Token {
+  return !!t && (t.slug === props.id.toUpperCase() || String(t.id) === props.id)
+}
+
+function loadToken() {
+  tokenLoading = fetchToken()
+  return tokenLoading
+}
+
+async function fetchToken() {
   const { data } = await api.get<{ data: Token; analysis: Analysis | null; signal: Signal | null; whale_threshold_usd: number }>(`/tokens/${props.id}`)
   token.value = data.data
   analysis.value = data.analysis
   signal.value = data.signal
   whaleThreshold.value = data.whale_threshold_usd
+
+  if (props.id !== data.data.slug) {
+    router.replace({ params: { id: data.data.slug }, query: route.query, hash: route.hash })
+  }
 }
 
 async function loadCandles() {
@@ -49,10 +69,14 @@ async function loadCandles() {
 }
 
 async function loadActivity() {
+  if (!isCurrent(token.value)) await tokenLoading
+  const tokenId = token.value?.id
+  if (!tokenId) return
+
   const [w, n, o, p] = await Promise.all([
     api.get<{ data: WhaleTrade[] }>(`/tokens/${props.id}/whales`),
     api.get<{ data: NewsItem[] }>(`/tokens/${props.id}/news`),
-    api.get<{ data: Order[] }>('/orders', { params: { token_id: props.id } }),
+    api.get<{ data: Order[] }>('/orders', { params: { token_id: tokenId } }),
     api.get<Portfolio>('/portfolio'),
   ])
   whales.value = w.data.data
@@ -79,6 +103,8 @@ watch(timeframe, loadCandles)
 watch(
   () => props.id,
   () => {
+    // Swapping an old id link for the slug is the same token: nothing to reload.
+    if (isCurrent(token.value)) return
     loadToken()
     loadCandles()
     loadActivity()

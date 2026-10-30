@@ -12,6 +12,7 @@ import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
 import { changeClass, pct, price, usd } from '@/lib/format'
 import type { Analysis, Candidate, NewsItem, Portfolio, Recommendation, WhaleTrade } from '@/lib/types'
+import { tokenPath } from '@/lib/links'
 
 interface Overview {
   fear_greed: { value: number; classification: string } | null
@@ -71,7 +72,7 @@ const order: Recommendation[] = ['STRONG_BUY', 'BUY', 'HOLD', 'SELL', 'STRONG_SE
         />
         <ul v-else class="mt-3 divide-y divide-line">
           <li v-for="(a, i) in overview?.top_picks" :key="a.id" class="animate-fade-up" :style="{ animationDelay: `${i * 50}ms` }">
-            <RouterLink :to="`/tokens/${a.token_id}`" class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors duration-200 hover:bg-panel-2/50">
+            <RouterLink :to="tokenPath(a.token, a.token_id)" class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors duration-200 hover:bg-panel-2/50">
               <TokenAvatar :src="a.token?.image_url" :symbol="a.token?.symbol ?? '?'" :size="32" />
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 font-medium">
@@ -93,7 +94,7 @@ const order: Recommendation[] = ['STRONG_BUY', 'BUY', 'HOLD', 'SELL', 'STRONG_SE
           <h3 class="card-title mt-5">Peringatan</h3>
           <ul class="mt-2 space-y-2">
             <li v-for="a in overview.warnings" :key="a.id">
-              <RouterLink :to="`/tokens/${a.token_id}`" class="flex items-center gap-2 rounded-lg bg-down/5 p-2 text-sm hover:bg-down/10">
+              <RouterLink :to="tokenPath(a.token, a.token_id)" class="flex items-center gap-2 rounded-lg bg-down/5 p-2 text-sm hover:bg-down/10">
                 <RecommendationBadge :value="a.recommendation" />
                 <span class="font-medium">{{ a.token?.symbol }}</span>
                 <span class="truncate text-xs text-muted">{{ a.summary }}</span>
@@ -129,7 +130,7 @@ const order: Recommendation[] = ['STRONG_BUY', 'BUY', 'HOLD', 'SELL', 'STRONG_SE
         <RouterLink
           v-for="(c, i) in overview.discoveries"
           :key="c.id"
-          :to="c.token_id ? `/tokens/${c.token_id}` : '/discover'"
+          :to="c.token_id ? tokenPath(c.token, c.token_id) : '/discover'"
           class="card-hover animate-fade-up rounded-lg border border-line bg-panel-2/40 p-3"
           :style="{ animationDelay: `${i * 50}ms` }"
         >

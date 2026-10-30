@@ -2,6 +2,7 @@
 import { timeAgo } from '@/lib/format'
 import type { NewsItem } from '@/lib/types'
 import SentimentPill from './SentimentPill.vue'
+import { tokenPath } from '@/lib/links'
 
 defineProps<{ items: NewsItem[] }>()
 </script>
@@ -15,7 +16,7 @@ defineProps<{ items: NewsItem[] }>()
         <span>·</span>
         <span>{{ timeAgo(item.published_at) }}</span>
         <SentimentPill :label="item.sentiment_label" :score="item.sentiment_score" />
-        <RouterLink v-for="token in item.tokens ?? []" :key="token.id" :to="`/tokens/${token.id}`" class="rounded bg-brand/10 px-1.5 py-0.5 text-brand">
+        <RouterLink v-for="token in item.tokens ?? []" :key="token.id" :to="tokenPath(token)" class="rounded bg-brand/10 px-1.5 py-0.5 text-brand">
           {{ token.symbol }}
         </RouterLink>
       </div>

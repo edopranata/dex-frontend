@@ -114,7 +114,55 @@ onBeforeUnmount(() => portfolio.stop())
         </button>
       </div>
 
-      <div class="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3">
+      <!-- Portfolio snapshot: stays put while only the menu below scrolls -->
+      <RouterLink to="/portfolio" class="group block shrink-0 border-y border-line px-4 py-3 transition-colors hover:bg-panel-2/40" title="Buka portofolio">
+        <template v-if="portfolio.summary">
+          <div class="flex items-baseline justify-between gap-2">
+            <p class="text-[11px] text-muted">Ekuitas</p>
+            <p class="num text-[11px]" :class="changeClass(portfolio.summary.total_pnl)">{{ pct(portfolio.summary.total_pnl_pct) }}</p>
+          </div>
+          <AnimatedNumber class="num block text-xl font-semibold" :value="portfolio.summary.equity_usd" :format="usd" />
+          <p class="num text-xs" :class="changeClass(portfolio.summary.total_pnl)">
+            {{ portfolio.summary.total_pnl >= 0 ? '+' : '' }}{{ usd(portfolio.summary.total_pnl) }}
+            <span class="text-muted">total P&amp;L</span>
+          </p>
+
+          <div class="mt-2.5 h-1 overflow-hidden rounded-full bg-bg" :title="`${holdingsShare.toFixed(0)}% di token`">
+            <div class="h-full rounded-full bg-brand transition-[width] duration-700" :style="{ width: `${holdingsShare}%` }" />
+          </div>
+          <p class="mt-1 flex justify-between text-[10px] text-muted">
+            <span>Token {{ holdingsShare.toFixed(0) }}%</span>
+            <span>Kas {{ (100 - holdingsShare).toFixed(0) }}%</span>
+          </p>
+
+          <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
+            <div>
+              <dt class="text-muted">Terealisasi</dt>
+              <dd class="num" :class="changeClass(portfolio.summary.realized_pnl)">{{ usd(portfolio.summary.realized_pnl) }}</dd>
+            </div>
+            <div class="text-right">
+              <dt class="text-muted">Belum terealisasi</dt>
+              <dd class="num" :class="changeClass(portfolio.summary.unrealized_pnl)">{{ usd(portfolio.summary.unrealized_pnl) }}</dd>
+            </div>
+            <div>
+              <dt class="text-muted">Saldo kas</dt>
+              <dd class="num">{{ usd(portfolio.summary.balance_usd) }}</dd>
+            </div>
+            <div class="text-right">
+              <dt class="text-muted">Posisi · pending</dt>
+              <dd class="num">{{ portfolio.summary.open_positions }} · {{ portfolio.summary.pending_orders }}</dd>
+            </div>
+          </dl>
+        </template>
+        <div v-else class="space-y-2">
+          <div class="skeleton h-3 w-16" />
+          <div class="skeleton h-6 w-32" />
+          <div class="skeleton h-1 w-full" />
+          <div class="skeleton h-3 w-full" />
+        </div>
+      </RouterLink>
+
+      <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
         <nav class="space-y-0.5">
           <RouterLink
             v-for="item in trading"
@@ -144,59 +192,6 @@ onBeforeUnmount(() => portfolio.stop())
             </template>
           </nav>
         </template>
-
-        <!-- Portfolio snapshot -->
-        <RouterLink to="/portfolio" class="mt-5 block rounded-xl border border-line bg-panel-2/50 p-3 transition-colors hover:border-brand/40">
-          <template v-if="portfolio.summary">
-            <p class="text-[11px] text-muted">Ekuitas</p>
-            <AnimatedNumber class="num block text-xl font-semibold" :value="portfolio.summary.equity_usd" :format="usd" />
-            <p class="num mt-0.5 text-xs" :class="changeClass(portfolio.summary.total_pnl)">
-              {{ portfolio.summary.total_pnl >= 0 ? '+' : '' }}{{ usd(portfolio.summary.total_pnl) }} ({{ pct(portfolio.summary.total_pnl_pct) }})
-              <span class="text-muted">total P&amp;L</span>
-            </p>
-
-            <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-bg" :title="`${holdingsShare.toFixed(0)}% di token`">
-              <div class="h-full rounded-full bg-brand transition-[width] duration-700" :style="{ width: `${holdingsShare}%` }" />
-            </div>
-            <p class="mt-1 flex justify-between text-[10px] text-muted">
-              <span>Token {{ holdingsShare.toFixed(0) }}%</span>
-              <span>Kas {{ (100 - holdingsShare).toFixed(0) }}%</span>
-            </p>
-
-            <dl class="mt-3 space-y-1.5 text-xs">
-              <div class="flex justify-between gap-2">
-                <dt class="text-muted">P&amp;L terealisasi</dt>
-                <dd class="num" :class="changeClass(portfolio.summary.realized_pnl)">{{ usd(portfolio.summary.realized_pnl) }}</dd>
-              </div>
-              <div class="flex justify-between gap-2">
-                <dt class="text-muted">P&amp;L belum terealisasi</dt>
-                <dd class="num" :class="changeClass(portfolio.summary.unrealized_pnl)">{{ usd(portfolio.summary.unrealized_pnl) }}</dd>
-              </div>
-              <div class="flex justify-between gap-2">
-                <dt class="text-muted">Saldo kas</dt>
-                <dd class="num">{{ usd(portfolio.summary.balance_usd) }}</dd>
-              </div>
-              <div class="flex justify-between gap-2">
-                <dt class="text-muted">Nilai token</dt>
-                <dd class="num">{{ usd(portfolio.summary.holdings_value_usd) }}</dd>
-              </div>
-              <div class="flex justify-between gap-2">
-                <dt class="text-muted">Posisi · order pending</dt>
-                <dd class="num">{{ portfolio.summary.open_positions }} · {{ portfolio.summary.pending_orders }}</dd>
-              </div>
-              <div class="flex justify-between gap-2">
-                <dt class="text-muted">Transaksi · fee</dt>
-                <dd class="num">{{ portfolio.summary.trades }} · {{ usd(portfolio.summary.fees_paid) }}</dd>
-              </div>
-            </dl>
-          </template>
-          <div v-else class="space-y-2">
-            <div class="skeleton h-3 w-16" />
-            <div class="skeleton h-6 w-32" />
-            <div class="skeleton h-3 w-full" />
-            <div class="skeleton h-3 w-full" />
-          </div>
-        </RouterLink>
       </div>
 
       <!-- User -->

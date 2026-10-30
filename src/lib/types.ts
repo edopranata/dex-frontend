@@ -91,6 +91,8 @@ export interface Analysis {
 
 export interface Token {
   id: number
+  /** URL key such as "JOB-SOL". */
+  slug: string
   chain_id: string
   chain_label: string
   pair_address: string
@@ -161,6 +163,15 @@ export interface Order {
   token?: Token
 }
 
+/** Totals over every order matching the history filters (not just the loaded page). */
+export interface OrderHistorySummary {
+  orders: number
+  realized_pnl: number
+  fees: number
+  wins: number
+  losses: number
+}
+
 export interface Position {
   id: number
   token_id: number
@@ -199,7 +210,7 @@ export interface WhaleTrade {
   token_amount: number | null
   price_usd: number | null
   traded_at: string
-  token?: { id: number; symbol: string; chain_id: string; image_url: string | null }
+  token?: { id: number; slug: string; symbol: string; chain_id: string; image_url: string | null }
 }
 
 export interface NewsItem {
@@ -212,7 +223,7 @@ export interface NewsItem {
   sentiment_score: number | null
   sentiment_label: 'bullish' | 'neutral' | 'bearish' | null
   sentiment_provider: string | null
-  tokens?: { id: number; symbol: string }[]
+  tokens?: { id: number; slug: string; symbol: string }[]
 }
 
 export interface Candle {
@@ -259,7 +270,7 @@ export interface Candidate {
   pair_created_at: string | null
   first_seen_at: string
   last_seen_at: string
-  token?: { id: number; is_active: boolean; recommendation: Recommendation | null; final_score: number | null } | null
+  token?: { id: number; slug: string; is_active: boolean; recommendation: Recommendation | null; final_score: number | null } | null
 }
 
 export interface WatchlistEvent {
@@ -268,5 +279,5 @@ export interface WatchlistEvent {
   reason: string
   score: number | null
   created_at: string
-  token: { id: number; symbol: string; chain_id: string; image_url: string | null; is_active: boolean }
+  token: { id: number; slug: string; symbol: string; chain_id: string; image_url: string | null; is_active: boolean }
 }

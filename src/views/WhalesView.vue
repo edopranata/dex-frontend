@@ -6,6 +6,9 @@ import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
 import { usd } from '@/lib/format'
 import type { Token, WhaleTrade } from '@/lib/types'
+import { tokenPath } from '@/lib/links'
+import AppSelect from '@/components/AppSelect.vue'
+import type { SelectOption } from '@/components/AppSelect.vue'
 
 interface Summary {
   token_id: number
@@ -20,6 +23,22 @@ const tokens = ref<Token[]>([])
 const tokenId = ref<number | ''>('')
 const side = ref<'' | 'buy' | 'sell'>('')
 const hours = ref(24)
+
+const tokenOptions = computed<SelectOption<number | ''>[]>(() => [
+  { value: '', label: 'Semua token' },
+  ...tokens.value.map((t) => ({ value: t.id, label: `${t.symbol} (${t.chain_label})` })),
+])
+const sideOptions: SelectOption<typeof side.value>[] = [
+  { value: '', label: 'Beli & jual' },
+  { value: 'buy', label: 'Hanya beli' },
+  { value: 'sell', label: 'Hanya jual' },
+]
+const hourOptions: SelectOption<number>[] = [
+  { value: 6, label: '6 jam' },
+  { value: 24, label: '24 jam' },
+  { value: 72, label: '3 hari' },
+  { value: 168, label: '7 hari' },
+]
 
 async function load() {
   const params: Record<string, unknown> = { hours: hours.value }
@@ -39,7 +58,8 @@ const flows = computed(() =>
     .map((s) => {
       const buy = Number(s.buy_usd)
       const sell = Number(s.sell_usd)
-      return { ...s, buy, sell, net: buy - sell, symbol: tokens.value.find((t) => t.id === s.token_id)?.symbol ?? `#${s.token_id}` }
+      const token = tokens.value.find((t) => t.id === s.token_id)
+      return { ...s, buy, sell, net: buy - sell, token, symbol: token?.symbol ?? `#${s.token_id}` }
     })
     .sort((a, b) => b.net - a.net),
 )
@@ -50,28 +70,16 @@ const maxFlow = computed(() => Math.max(1, ...flows.value.map((f) => Math.max(f.
   <div class="space-y-6">
     <div class="flex flex-wrap items-center gap-3">
       <h1 class="text-xl font-semibold">Whale Tracker</h1>
-      <select v-model="tokenId">
-        <option value="">Semua token</option>
-        <option v-for="t in tokens" :key="t.id" :value="t.id">{{ t.symbol }} ({{ t.chain_label }})</option>
-      </select>
-      <select v-model="side">
-        <option value="">Beli & jual</option>
-        <option value="buy">Hanya beli</option>
-        <option value="sell">Hanya jual</option>
-      </select>
-      <select v-model.number="hours">
-        <option :value="6">6 jam</option>
-        <option :value="24">24 jam</option>
-        <option :value="72">3 hari</option>
-        <option :value="168">7 hari</option>
-      </select>
+      <AppSelect v-model="tokenId" aria-label="Token" :options="tokenOptions" />
+      <AppSelect v-model="side" aria-label="Arah" :options="sideOptions" />
+      <AppSelect v-model="hours" aria-label="Periode" :options="hourOptions" />
     </div>
 
     <section v-if="flows.length" class="card p-4">
       <h2 class="card-title">Arus dana whale per token</h2>
       <ul class="mt-3 space-y-3">
         <li v-for="f in flows" :key="f.token_id" class="grid grid-cols-[4rem_1fr_7rem] items-center gap-3 text-sm">
-          <RouterLink :to="`/tokens/${f.token_id}`" class="font-medium hover:text-brand">{{ f.symbol }}</RouterLink>
+          <RouterLink :to="tokenPath(f.token, f.token_id)" class="font-medium hover:text-brand">{{ f.symbol }}</RouterLink>
           <div class="space-y-1">
             <div class="h-2 rounded bg-up/70" :style="{ width: `${(f.buy / maxFlow) * 100}%` }" :title="`Beli ${usd(f.buy)}`" />
             <div class="h-2 rounded bg-down/70" :style="{ width: `${(f.sell / maxFlow) * 100}%` }" :title="`Jual ${usd(f.sell)}`" />

@@ -12,6 +12,9 @@ import { api, errorMessage } from '@/lib/api'
 import { changeClass, pct, price, timeAgo, usd } from '@/lib/format'
 import type { Token, WatchlistEvent } from '@/lib/types'
 import { useToastStore } from '@/stores/toast'
+import { tokenPath } from '@/lib/links'
+import AppSelect from '@/components/AppSelect.vue'
+import type { SelectOption } from '@/components/AppSelect.vue'
 
 type Filter = 'all' | 'new' | 'auto' | 'pinned' | 'declining'
 
@@ -24,6 +27,13 @@ const showAdd = ref(false)
 const search = ref('')
 const filter = ref<Filter>('all')
 const sortKey = ref<'liquidity_usd' | 'volume_h24' | 'change' | 'score' | 'added'>('score')
+const sortOptions: SelectOption<typeof sortKey.value>[] = [
+  { value: 'score', label: 'Urut: skor analisis' },
+  { value: 'added', label: 'Urut: terbaru masuk' },
+  { value: 'liquidity_usd', label: 'Urut: likuiditas' },
+  { value: 'volume_h24', label: 'Urut: volume 24j' },
+  { value: 'change', label: 'Urut: perubahan 24j' },
+]
 const pinning = ref<number | null>(null)
 
 async function load() {
@@ -154,13 +164,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
         </button>
       </div>
       <input v-model="search" placeholder="Cari token…" class="w-40" />
-      <select v-model="sortKey">
-        <option value="score">Urut: skor analisis</option>
-        <option value="added">Urut: terbaru masuk</option>
-        <option value="liquidity_usd">Urut: likuiditas</option>
-        <option value="volume_h24">Urut: volume 24j</option>
-        <option value="change">Urut: perubahan 24j</option>
-      </select>
+      <AppSelect v-model="sortKey" aria-label="Urutan" :options="sortOptions" />
     </div>
 
     <div class="grid gap-4 xl:grid-cols-[1fr_20rem] 3xl:grid-cols-[1fr_24rem]">
@@ -178,7 +182,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
             </tr>
           </thead>
           <TransitionGroup tag="tbody" name="row">
-            <tr v-for="t in rows" :key="t.id" class="cursor-pointer transition-colors duration-150 hover:bg-panel-2/50" @click="$router.push(`/tokens/${t.id}`)">
+            <tr v-for="t in rows" :key="t.id" class="cursor-pointer transition-colors duration-150 hover:bg-panel-2/50" @click="$router.push(tokenPath(t))">
               <td>
                 <button
                   class="text-sm transition-all duration-200 hover:scale-125 disabled:opacity-40"
@@ -240,7 +244,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
             </span>
             <div class="min-w-0 text-xs">
               <div class="flex items-center gap-1.5">
-                <RouterLink v-if="e.token.is_active" :to="`/tokens/${e.token.id}`" class="font-medium text-text hover:text-brand">{{ e.token.symbol }}</RouterLink>
+                <RouterLink v-if="e.token.is_active" :to="tokenPath(e.token)" class="font-medium text-text hover:text-brand">{{ e.token.symbol }}</RouterLink>
                 <span v-else class="font-medium text-muted line-through">{{ e.token.symbol }}</span>
                 <span class="text-muted">{{ eventStyle[e.action].label }} · {{ timeAgo(e.created_at) }}</span>
               </div>

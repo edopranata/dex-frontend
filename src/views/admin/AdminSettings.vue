@@ -3,6 +3,8 @@ import { onMounted, reactive, ref } from 'vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
 import { useToastStore } from '@/stores/toast'
+import AppSelect from '@/components/AppSelect.vue'
+import AppSwitch from '@/components/AppSwitch.vue'
 
 interface Field {
   key: string
@@ -235,20 +237,14 @@ function display(value: unknown): string {
               {{ field.is_set ? `Terisi (${field.source === 'panel' ? 'dari panel' : 'dari .env'})` : 'Kosong' }}
             </span>
           </template>
-          <select v-else-if="field.type === 'select'" v-model="form[field.key]" class="w-full">
-            <option v-for="(label, value) in field.options" :key="value" :value="value">{{ label }}</option>
-          </select>
+          <AppSelect
+            v-else-if="field.type === 'select'"
+            v-model="form[field.key] as string"
+            class="w-full"
+            :options="Object.entries(field.options ?? {}).map(([value, label]) => ({ value, label }))"
+          />
           <span v-else-if="field.type === 'bool'" class="flex items-center gap-2 py-2">
-            <button
-              type="button"
-              class="relative h-6 w-11 rounded-full transition-colors duration-200"
-              :class="form[field.key] ? 'bg-up' : 'bg-panel-2 ring-1 ring-line'"
-              role="switch"
-              :aria-checked="!!form[field.key]"
-              @click="form[field.key] = !form[field.key]"
-            >
-              <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200" :class="form[field.key] ? 'translate-x-5' : ''" />
-            </button>
+            <AppSwitch v-model="form[field.key] as boolean" :label="field.label" />
             <span class="text-sm">{{ form[field.key] ? 'Aktif' : 'Nonaktif' }}</span>
           </span>
           <input

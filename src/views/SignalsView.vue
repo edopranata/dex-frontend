@@ -8,6 +8,7 @@ import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
 import { dateTime, price } from '@/lib/format'
 import type { Paginated, Signal } from '@/lib/types'
+import { tokenPath } from '@/lib/links'
 
 interface Stats {
   total: number
@@ -97,7 +98,7 @@ const statusLabel: Record<string, [string, string]> = {
           <tr v-for="s in signals" :key="s.id" class="transition-colors hover:bg-panel-2/50">
             <td class="text-xs whitespace-nowrap text-muted">{{ dateTime(s.created_at) }}</td>
             <td>
-              <RouterLink :to="`/tokens/${s.token_id}`" class="flex items-center gap-2 hover:text-brand">
+              <RouterLink :to="tokenPath(s.token, s.token_id)" class="flex items-center gap-2 hover:text-brand">
                 <TokenAvatar :src="s.token?.image_url" :symbol="s.token?.symbol ?? '?'" :size="20" />{{ s.token?.symbol }}
               </RouterLink>
             </td>

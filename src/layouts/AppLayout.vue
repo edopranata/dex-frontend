@@ -19,6 +19,8 @@ interface NavItem {
   label: string
   icon: IconName
   exact?: boolean
+  /** Opens outside the SPA (served by Laravel), in a new tab. */
+  external?: boolean
 }
 
 const trading: NavItem[] = [
@@ -31,10 +33,15 @@ const trading: NavItem[] = [
   { to: '/portfolio', label: 'Portofolio', icon: 'portfolio' },
 ]
 
-const account = computed<NavItem[]>(() => [
-  { to: '/profile', label: 'Profil & Pengaturan', icon: 'user' },
-  ...(auth.user?.is_admin ? [{ to: '/admin', label: 'Admin', icon: 'admin' as const }] : []),
-])
+const adminArea: NavItem[] = [
+  { to: '/admin/settings', label: 'Pengaturan', icon: 'settings' },
+  { to: '/admin/users', label: 'Pengguna', icon: 'users' },
+  { to: '/admin/backups', label: 'Backup', icon: 'database' },
+  { to: '/admin/logs', label: 'Log', icon: 'file' },
+  { to: '/admin/tasks', label: 'Tugas terjadwal', icon: 'clock' },
+  { to: '/admin/system', label: 'Sistem', icon: 'server' },
+  { to: '/horizon', label: 'Horizon', icon: 'layers', external: true },
+]
 
 const initials = computed(() =>
   (auth.user?.name ?? '?')
@@ -121,13 +128,22 @@ onBeforeUnmount(() => portfolio.stop())
           </RouterLink>
         </nav>
 
-        <p class="mt-5 mb-1 px-3 text-[10px] font-semibold tracking-wider text-muted uppercase">Akun</p>
-        <nav class="space-y-0.5">
-          <RouterLink v-for="item in account" :key="item.to" :to="item.to" class="nav-item" :class="isActive(item) ? 'nav-item-active' : ''">
-            <AppIcon :name="item.icon" class="h-[18px] w-[18px] shrink-0" />
-            {{ item.label }}
-          </RouterLink>
-        </nav>
+        <template v-if="auth.user?.is_admin">
+          <p class="mt-5 mb-1 px-3 text-[10px] font-semibold tracking-wider text-muted uppercase">Admin area</p>
+          <nav class="space-y-0.5">
+            <template v-for="item in adminArea" :key="item.to">
+              <a v-if="item.external" :href="item.to" target="_blank" rel="noopener" class="nav-item" title="Dashboard queue Laravel Horizon (tab baru)">
+                <AppIcon :name="item.icon" class="h-[18px] w-[18px] shrink-0" />
+                {{ item.label }}
+                <span class="ml-auto text-xs" aria-hidden="true">↗</span>
+              </a>
+              <RouterLink v-else :to="item.to" class="nav-item" :class="isActive(item) ? 'nav-item-active' : ''">
+                <AppIcon :name="item.icon" class="h-[18px] w-[18px] shrink-0" />
+                {{ item.label }}
+              </RouterLink>
+            </template>
+          </nav>
+        </template>
 
         <!-- Portfolio snapshot -->
         <RouterLink to="/portfolio" class="mt-5 block rounded-xl border border-line bg-panel-2/50 p-3 transition-colors hover:border-brand/40">

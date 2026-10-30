@@ -1,6 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    guest?: boolean
+    admin?: boolean
+    /** Page title and subtitle shown by the admin layout. */
+    title?: string
+    description?: string
+  }
+}
+
 const router = createRouter({
   history: createWebHistory(),
   scrollBehavior: (_to, _from, saved) => saved ?? { top: 0, behavior: 'smooth' },
@@ -19,19 +29,19 @@ const router = createRouter({
         { path: 'signals', name: 'signals', component: () => import('@/views/SignalsView.vue') },
         { path: 'whales', name: 'whales', component: () => import('@/views/WhalesView.vue') },
         { path: 'news', name: 'news', component: () => import('@/views/NewsView.vue') },
-        { path: 'profile', name: 'profile', component: () => import('@/views/ProfileView.vue') },
+        { path: 'profile/:tab?', name: 'profile', component: () => import('@/views/ProfileView.vue'), props: true },
         {
           path: 'admin',
           component: () => import('@/views/admin/AdminLayout.vue'),
           meta: { admin: true },
           children: [
             { path: '', redirect: '/admin/settings' },
-            { path: 'settings', name: 'admin-settings', component: () => import('@/views/admin/AdminSettings.vue') },
-            { path: 'users', name: 'admin-users', component: () => import('@/views/admin/AdminUsers.vue') },
-            { path: 'backups', name: 'admin-backups', component: () => import('@/views/admin/AdminBackups.vue') },
-            { path: 'logs', name: 'admin-logs', component: () => import('@/views/admin/AdminLogs.vue') },
-            { path: 'tasks', name: 'admin-tasks', component: () => import('@/views/admin/AdminTasks.vue') },
-            { path: 'system', name: 'admin-system', component: () => import('@/views/admin/AdminSystem.vue') },
+            { path: 'settings', name: 'admin-settings', component: () => import('@/views/admin/AdminSettings.vue'), meta: { title: 'Pengaturan', description: 'Pengaturan aplikasi yang berlaku untuk semua pengguna. Perubahan langsung dipakai tanpa deploy ulang.' } },
+            { path: 'users', name: 'admin-users', component: () => import('@/views/admin/AdminUsers.vue'), meta: { title: 'Pengguna', description: 'Tambah akun, atur peran admin, reset password atau 2FA.' } },
+            { path: 'backups', name: 'admin-backups', component: () => import('@/views/admin/AdminBackups.vue'), meta: { title: 'Backup', description: 'Backup database harian otomatis, backup manual, dan unduhan file.' } },
+            { path: 'logs', name: 'admin-logs', component: () => import('@/views/admin/AdminLogs.vue'), meta: { title: 'Log', description: 'Log aplikasi Laravel per hari.' } },
+            { path: 'tasks', name: 'admin-tasks', component: () => import('@/views/admin/AdminTasks.vue'), meta: { title: 'Tugas terjadwal', description: 'Jadwal cron aplikasi, riwayat eksekusi, dan jalankan manual.' } },
+            { path: 'system', name: 'admin-system', component: () => import('@/views/admin/AdminSystem.vue'), meta: { title: 'Sistem', description: 'Status scheduler, antrean job, database, disk, dan job gagal.' } },
           ],
         },
       ],

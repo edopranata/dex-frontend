@@ -216,7 +216,7 @@ function display(value: unknown): string {
           Error terakhir dari Telegram ({{ when(telegram.webhook.last_error_at) }}): {{ telegram.webhook.last_error }}
         </p>
         <p v-if="telegram.webhook && !telegram.webhook.connected && telegram.webhook.url" class="text-warn">Webhook mengarah ke {{ telegram.webhook.url }}, bukan {{ telegram.webhook.expected_url }}.</p>
-        <p class="text-muted">Setiap pengguna menghubungkan Telegram-nya sendiri dengan kode unik di <RouterLink to="/profile" class="text-brand hover:underline">Profil</RouterLink>.</p>
+        <p class="text-muted">Setiap pengguna menghubungkan Telegram-nya sendiri dengan kode unik di <RouterLink to="/profile/telegram" class="text-brand hover:underline">Profil → Telegram</RouterLink>.</p>
       </div>
 
       <div class="mt-4 grid gap-4 md:grid-cols-2 3xl:grid-cols-3">

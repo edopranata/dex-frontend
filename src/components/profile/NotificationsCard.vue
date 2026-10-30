@@ -46,7 +46,9 @@ async function save() {
   <form class="card p-5" @submit.prevent="save">
     <h2 class="font-semibold">Notifikasi Telegram</h2>
     <p class="mt-0.5 text-xs text-muted">Pilih apa saja yang dikirim ke Telegram Anda. Berlaku hanya untuk akun ini.</p>
-    <p v-if="!telegramLinked" class="mt-3 rounded-lg bg-warn/10 p-2.5 text-xs text-warn">Hubungkan Telegram dulu agar notifikasi bisa terkirim.</p>
+    <p v-if="!telegramLinked" class="mt-3 rounded-lg bg-warn/10 p-2.5 text-xs text-warn">
+      <RouterLink to="/profile/telegram" replace class="underline">Hubungkan Telegram</RouterLink> dulu agar notifikasi bisa terkirim.
+    </p>
 
     <ul class="mt-4 divide-y divide-line">
       <template v-for="t in toggles" :key="t.key">

@@ -1,45 +1,20 @@
 <script setup lang="ts">
-const tabs = [
-  { to: '/admin/settings', label: 'Pengaturan' },
-  { to: '/admin/users', label: 'Pengguna' },
-  { to: '/admin/backups', label: 'Backup' },
-  { to: '/admin/logs', label: 'Log' },
-  { to: '/admin/tasks', label: 'Tugas terjadwal' },
-  { to: '/admin/system', label: 'Sistem' },
-]
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 </script>
 
 <template>
   <div class="space-y-5">
     <div>
-      <h1 class="text-xl font-semibold">Admin</h1>
-      <p class="mt-1 text-sm text-muted">Pengaturan aplikasi, pengguna, backup database, log, dan status server.</p>
+      <p class="text-xs font-semibold tracking-wider text-muted uppercase">Admin area</p>
+      <h1 class="mt-1 text-xl font-semibold">{{ route.meta.title ?? 'Admin' }}</h1>
+      <p v-if="route.meta.description" class="mt-1 text-sm text-muted">{{ route.meta.description }}</p>
     </div>
-
-    <nav class="flex gap-1 overflow-x-auto border-b border-line">
-      <RouterLink
-        v-for="tab in tabs"
-        :key="tab.to"
-        :to="tab.to"
-        class="-mb-px border-b-2 border-transparent px-3 py-2 text-sm whitespace-nowrap text-muted transition-colors hover:text-text"
-        active-class="border-brand! text-text!"
-      >
-        {{ tab.label }}
-      </RouterLink>
-      <a
-        href="/horizon"
-        target="_blank"
-        rel="noopener"
-        class="-mb-px ml-auto border-b-2 border-transparent px-3 py-2 text-sm whitespace-nowrap text-muted transition-colors hover:text-text"
-        title="Dashboard queue (Laravel Horizon), dibuka di tab baru"
-      >
-        Horizon ↗
-      </a>
-    </nav>
 
     <RouterView v-slot="{ Component }">
       <Transition name="page" mode="out-in">
-        <component :is="Component" />
+        <component :is="Component" :key="route.path" />
       </Transition>
     </RouterView>
   </div>

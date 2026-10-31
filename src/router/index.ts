@@ -46,6 +46,7 @@ const router = createRouter({
             { path: 'backups', name: 'admin-backups', component: () => import('@/views/admin/AdminBackups.vue'), meta: { title: 'Backup', description: 'Backup database harian otomatis, backup manual, dan unduhan file.' } },
             { path: 'logs', name: 'admin-logs', component: () => import('@/views/admin/AdminLogs.vue'), meta: { title: 'Log', description: 'Log aplikasi Laravel per hari.' } },
             { path: 'tasks', name: 'admin-tasks', component: () => import('@/views/admin/AdminTasks.vue'), meta: { title: 'Tugas terjadwal', description: 'Jadwal cron aplikasi, riwayat eksekusi, dan jalankan manual.' } },
+            { path: 'containers', name: 'admin-containers', component: () => import('@/views/admin/AdminContainers.vue'), meta: { title: 'Container', description: 'Status, CPU, memori, dan riwayat setiap container di VPS.' } },
             { path: 'system', name: 'admin-system', component: () => import('@/views/admin/AdminSystem.vue'), meta: { title: 'Sistem', description: 'Status scheduler, antrean job, database, disk, dan job gagal.' } },
           ],
         },

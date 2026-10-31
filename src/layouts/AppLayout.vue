@@ -4,23 +4,31 @@ import { useRoute, useRouter } from 'vue-router'
 import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import AppIcon from '@/components/AppIcon.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+import FeedMenu from '@/components/FeedMenu.vue'
+import FeedNotices from '@/components/FeedNotices.vue'
+import FeedTicker from '@/components/FeedTicker.vue'
 import InstallButton from '@/components/InstallButton.vue'
 import SyncStatus from '@/components/SyncStatus.vue'
 import ThemeMenu from '@/components/ThemeMenu.vue'
 import Toaster from '@/components/Toaster.vue'
+import { usePolling } from '@/composables/usePolling'
 import { changeClass, pct, usd } from '@/lib/format'
 import { adminNav as adminArea, type NavItem, tradingNav as trading } from '@/lib/navigation'
 import { useAuthStore } from '@/stores/auth'
+import { useFeedStore } from '@/stores/feed'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useRefreshStore } from '@/stores/refresh'
 
 const auth = useAuthStore()
 const portfolio = usePortfolioStore()
+const feed = useFeedStore()
 const router = useRouter()
 const route = useRoute()
 const refresh = useRefreshStore()
 const menuOpen = ref(false)
 const searchOpen = ref(false)
+
+usePolling(feed.poll, 30000)
 
 /** Toolbar breadcrumb: section and the current page's title (route meta). */
 const pageTitle = computed(() => [...route.matched].reverse().find((record) => record.meta.title)?.meta.title ?? '')
@@ -240,6 +248,7 @@ onBeforeUnmount(() => {
             <button type="button" class="icon-btn h-9 w-9" :disabled="refresh.refreshing" title="Muat ulang data halaman ini" aria-label="Muat ulang data" @click="refreshPage">
               <AppIcon name="refresh" class="h-[18px] w-[18px]" :class="{ 'animate-spin': refresh.refreshing }" />
             </button>
+            <FeedMenu />
             <ThemeMenu />
             <InstallButton />
             <RouterLink v-if="portfolio.summary" to="/portfolio" class="hidden border-l border-line pl-3 text-right text-xs leading-tight sm:block lg:hidden">
@@ -248,6 +257,7 @@ onBeforeUnmount(() => {
             </RouterLink>
           </div>
         </div>
+        <FeedTicker />
       </header>
 
       <main class="px-4 py-6 sm:px-6 lg:px-8 3xl:px-12">
@@ -264,6 +274,7 @@ onBeforeUnmount(() => {
     </div>
 
     <CommandPalette v-model="searchOpen" />
+    <FeedNotices />
     <Toaster />
   </div>
 </template>

@@ -28,6 +28,7 @@ export const adminNav: NavItem[] = [
   { to: '/admin/logs', label: 'Log', icon: 'file' },
   { to: '/admin/tasks', label: 'Tugas terjadwal', icon: 'clock' },
   { to: '/admin/system', label: 'Sistem', icon: 'server' },
+  { to: '/admin/containers', label: 'Container', icon: 'box' },
   { to: '/horizon', label: 'Horizon', icon: 'layers', external: true },
 ]
 

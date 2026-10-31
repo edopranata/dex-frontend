@@ -56,7 +56,7 @@ async function follow() {
   }
 }
 
-const providerLabel: Record<string, string> = { template: 'otomatis (tanpa AI)', gemini: 'AI · Google Gemini', xai: 'AI · xAI Grok', openai: 'AI · OpenAI' }
+const providerLabel: Record<string, string> = { template: 'otomatis (tanpa AI)', gemini: 'AI · Google Gemini', xai: 'AI · xAI Grok', openai: 'AI · OpenAI', ollama: 'AI · Ollama (lokal)' }
 </script>
 
 <template>

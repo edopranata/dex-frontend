@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AppDatePicker from '@/components/AppDatePicker.vue'
 import AppSelect, { type SelectOption } from '@/components/AppSelect.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import OrderKind from '@/components/OrderKind.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import StatCard from '@/components/StatCard.vue'
 import TokenAvatar from '@/components/TokenAvatar.vue'
@@ -187,7 +188,6 @@ async function reset() {
   await Promise.all([load(), auth.fetchUser()])
 }
 
-const typeLabel: Record<string, string> = { market: 'Market', limit: 'Limit', stop_loss: 'Stop Loss', take_profit: 'Take Profit' }
 const statusLabel: Record<string, string> = { filled: 'Terisi', pending: 'Menunggu', cancelled: 'Dibatalkan', rejected: 'Ditolak' }
 const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-warn', cancelled: 'text-muted', rejected: 'text-down' }
 </script>
@@ -329,7 +329,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
                 <RouterLink v-if="o.token" :to="tokenPath(o.token)" class="hover:text-brand">{{ o.token.symbol }}</RouterLink>
               </td>
               <td class="whitespace-nowrap">
-                <span :class="o.side === 'buy' ? 'text-up' : 'text-down'">{{ o.side === 'buy' ? 'Beli' : 'Jual' }}</span> {{ typeLabel[o.type] }}
+                <OrderKind :side="o.side" :type="o.type" />
                 <span v-if="o.signal_id" class="badge-mini ml-1 bg-brand/15 text-brand" title="Order dari sinyal">Sinyal</span>
               </td>
               <td class="num text-right">{{ price(o.trigger_price) }}</td>

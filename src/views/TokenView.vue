@@ -5,6 +5,7 @@ import AnalysisCard from '@/components/AnalysisCard.vue'
 import CandleChart from '@/components/CandleChart.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import LiveDot from '@/components/LiveDot.vue'
+import OrderKind from '@/components/OrderKind.vue'
 import PriceFlash from '@/components/PriceFlash.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import NewsList from '@/components/NewsList.vue'
@@ -113,7 +114,6 @@ watch(
   },
 )
 
-const orderTypeLabel: Record<string, string> = { market: 'Market', limit: 'Limit', stop_loss: 'Stop Loss', take_profit: 'Take Profit' }
 const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-warn', cancelled: 'text-muted', rejected: 'text-down' }
 </script>
 
@@ -214,8 +214,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
                 <tr v-for="o in orders" :key="o.id">
                   <td class="text-xs whitespace-nowrap text-muted">{{ timeAgo(o.created_at) }}</td>
                   <td class="whitespace-nowrap">
-                    <span :class="o.side === 'buy' ? 'text-up' : 'text-down'">{{ o.side === 'buy' ? 'Beli' : 'Jual' }}</span>
-                    {{ orderTypeLabel[o.type] }}
+                    <OrderKind :side="o.side" :type="o.type" />
                   </td>
                   <td class="num text-right">{{ price(o.trigger_price) }}</td>
                   <td class="num text-right">{{ price(o.filled_price) }}</td>

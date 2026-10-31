@@ -21,6 +21,35 @@ interface Summary {
   max_drawdown_r: number
 }
 
+interface Account {
+  key: string
+  label: string
+  recommendations: Recommendation[]
+  started_at: string | null
+  closed_signals: number
+  wins: number
+  win_rate: number | null
+  avg_r: number | null
+  total_r: number
+  equity_usd: number
+  starting_balance: number
+  total_pnl: number
+  total_pnl_pct: number
+  realized_pnl: number
+  unrealized_pnl: number
+  fees_paid: number
+  trades: number
+  open_positions: number
+  pending_orders: number
+  max_drawdown_pct: number | null
+  curve_started_at: string | null
+  curve: { t: number; equity: number }[]
+  limits: { max_open_positions: number; risk_pct: number; max_daily_loss_pct: number }
+  realized_today: number
+  daily_loss_reached: boolean
+  has_room: boolean
+}
+
 interface Report {
   version: string | null
   current_version: string
@@ -30,25 +59,7 @@ interface Report {
   weeks: (Summary & { week_start: string; cumulative_r: number })[]
   recommendations: (Summary & { recommendation: Recommendation })[]
   tokens: (Summary & { symbol: string; slug: string })[]
-  auto_follow: {
-    equity_usd: number
-    starting_balance: number
-    total_pnl: number
-    total_pnl_pct: number
-    realized_pnl: number
-    unrealized_pnl: number
-    fees_paid: number
-    trades: number
-    open_positions: number
-    pending_orders: number
-    max_drawdown_pct: number | null
-    curve_started_at: string | null
-    curve: { t: number; equity: number }[]
-    limits: { max_open_positions: number; risk_pct: number; max_daily_loss_pct: number }
-    realized_today: number
-    daily_loss_reached: boolean
-    has_room: boolean
-  }
+  accounts: Account[]
 }
 
 const report = ref<Report | null>(null)
@@ -70,13 +81,16 @@ const versionOptions = computed(() => [
   { value: 'all', label: 'Semua versi' },
 ])
 
-const buying = computed(() => {
-  const account = report.value?.auto_follow
-  if (!account) return null
-  if (account.daily_loss_reached) return { label: 'Dijeda', tone: 'down' as const, hint: 'Batas rugi harian tercapai, lanjut besok' }
-  if (!account.has_room) return { label: 'Penuh', tone: undefined, hint: `Maks. ${account.limits.max_open_positions} posisi, menunggu posisi tutup` }
-  return { label: 'Aktif', tone: 'up' as const, hint: `Maks. ${account.limits.max_open_positions} posisi · risiko ${account.limits.risk_pct}% per trade` }
-})
+const selectedKey = ref('all')
+const account = computed(() => report.value?.accounts.find((a) => a.key === selectedKey.value) ?? report.value?.accounts[0] ?? null)
+
+function buyingStatus(a: Account): { label: string; tone?: 'up' | 'down'; hint: string } {
+  if (a.daily_loss_reached) return { label: 'Dijeda', tone: 'down', hint: 'Batas rugi harian tercapai, lanjut besok' }
+  if (!a.has_room) return { label: 'Penuh', hint: `Maks. ${a.limits.max_open_positions} posisi, menunggu posisi tutup` }
+  return { label: 'Aktif', tone: 'up', hint: `Maks. ${a.limits.max_open_positions} posisi · risiko ${a.limits.risk_pct}% per trade` }
+}
+
+const buying = computed(() => (account.value ? buyingStatus(account.value) : null))
 
 function r(value: number | null | undefined): string {
   if (value === null || value === undefined) return '–'
@@ -214,25 +228,63 @@ function week(start: string): string {
         </section>
       </div>
 
-      <section class="card p-4">
-        <h2 class="card-title">Akun Auto-follow</h2>
-        <p class="mt-1 text-xs text-muted">Akun simulasi yang membeli sinyal baru otomatis dengan batas risiko, tanpa dipilih-pilih. Laporan akun ini tidak terpengaruh pilihan versi di atas.</p>
+      <section class="card overflow-x-auto">
+        <h2 class="card-title p-4 pb-1">Perbandingan akun Auto-follow</h2>
+        <p class="px-4 pb-2 text-xs text-muted">
+          Akun simulasi dengan modal dan batas risiko yang sama, masing-masing membeli rekomendasinya sendiri. Win rate dihitung dari sinyal selesai yang benar-benar dibeli akun itu. Tabel ini tidak terpengaruh pilihan versi di atas, dan akun Gabungan masih membawa posisi lama.
+        </p>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Akun</th>
+              <th class="text-right!">Sinyal selesai</th>
+              <th class="text-right!">Win rate</th>
+              <th class="text-right!">Rata-rata</th>
+              <th class="text-right!">Total R</th>
+              <th class="text-right!">Ekuitas</th>
+              <th class="text-right!">Drawdown</th>
+              <th>Beli baru</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="a in report.accounts" :key="a.key" :class="{ 'bg-brand/10': a.key === account?.key }">
+              <td class="whitespace-nowrap">
+                <button type="button" class="font-medium hover:text-brand" :aria-pressed="a.key === account?.key" @click="selectedKey = a.key">{{ a.label }}</button>
+                <span class="block text-[11px] text-muted">Sejak {{ a.started_at ? dateTime(a.started_at) : '–' }}</span>
+              </td>
+              <td class="num text-right">{{ a.closed_signals }}</td>
+              <td class="num text-right">{{ percent(a.win_rate) }}</td>
+              <td class="num text-right" :class="changeClass(a.avg_r)">{{ r(a.avg_r) }}</td>
+              <td class="num text-right" :class="changeClass(a.total_r)">{{ r(a.total_r) }}</td>
+              <td class="num text-right whitespace-nowrap">
+                {{ usd(a.equity_usd) }}
+                <span class="block text-[11px]" :class="changeClass(a.total_pnl)">{{ pct(a.total_pnl_pct) }}</span>
+              </td>
+              <td class="num text-right">{{ percent(a.max_drawdown_pct) }}</td>
+              <td class="text-xs whitespace-nowrap" :class="{ 'text-up': buyingStatus(a).tone === 'up', 'text-down': buyingStatus(a).tone === 'down', 'text-muted': !buyingStatus(a).tone }">{{ buyingStatus(a).label }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section v-if="account" class="card p-4">
+        <h2 class="card-title">Detail akun: {{ account.label }}</h2>
 
         <div class="mt-3 grid grid-cols-2 gap-section lg:grid-cols-4">
           <div>
             <p class="text-xs text-muted">Ekuitas</p>
-            <p class="num text-lg font-semibold">{{ usd(report.auto_follow.equity_usd) }}</p>
-            <p class="num text-xs" :class="changeClass(report.auto_follow.total_pnl)">{{ pct(report.auto_follow.total_pnl_pct) }} dari {{ usd(report.auto_follow.starting_balance) }}</p>
+            <p class="num text-lg font-semibold">{{ usd(account.equity_usd) }}</p>
+            <p class="num text-xs" :class="changeClass(account.total_pnl)">{{ pct(account.total_pnl_pct) }} dari {{ usd(account.starting_balance) }}</p>
           </div>
           <div>
             <p class="text-xs text-muted">Drawdown terburuk</p>
-            <p class="num text-lg font-semibold">{{ percent(report.auto_follow.max_drawdown_pct) }}</p>
+            <p class="num text-lg font-semibold">{{ percent(account.max_drawdown_pct) }}</p>
             <p class="text-xs text-muted">Target di bawah 15%</p>
           </div>
           <div>
             <p class="text-xs text-muted">Posisi</p>
-            <p class="num text-lg font-semibold">{{ report.auto_follow.open_positions }} terbuka</p>
-            <p class="text-xs text-muted">{{ report.auto_follow.pending_orders }} order menunggu · {{ report.auto_follow.trades }} transaksi</p>
+            <p class="num text-lg font-semibold">{{ account.open_positions }} terbuka</p>
+            <p class="text-xs text-muted">{{ account.pending_orders }} order menunggu · {{ account.trades }} transaksi</p>
           </div>
           <div>
             <p class="text-xs text-muted">Pembelian baru</p>
@@ -242,19 +294,19 @@ function week(start: string): string {
         </div>
 
         <dl class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
-          <div><dt class="inline text-muted">Terealisasi </dt><dd class="num inline" :class="changeClass(report.auto_follow.realized_pnl)">{{ usd(report.auto_follow.realized_pnl) }}</dd></div>
-          <div><dt class="inline text-muted">Belum terealisasi </dt><dd class="num inline" :class="changeClass(report.auto_follow.unrealized_pnl)">{{ usd(report.auto_follow.unrealized_pnl) }}</dd></div>
-          <div><dt class="inline text-muted">Fee </dt><dd class="num inline">{{ usd(report.auto_follow.fees_paid) }}</dd></div>
+          <div><dt class="inline text-muted">Terealisasi </dt><dd class="num inline" :class="changeClass(account.realized_pnl)">{{ usd(account.realized_pnl) }}</dd></div>
+          <div><dt class="inline text-muted">Belum terealisasi </dt><dd class="num inline" :class="changeClass(account.unrealized_pnl)">{{ usd(account.unrealized_pnl) }}</dd></div>
+          <div><dt class="inline text-muted">Fee </dt><dd class="num inline">{{ usd(account.fees_paid) }}</dd></div>
           <div>
-            <dt class="inline text-muted">Hari ini </dt><dd class="num inline" :class="changeClass(report.auto_follow.realized_today)">{{ usd(report.auto_follow.realized_today) }}</dd>
-            <span v-if="report.auto_follow.limits.max_daily_loss_pct > 0" class="text-muted"> · batas rugi {{ report.auto_follow.limits.max_daily_loss_pct }}% ekuitas</span>
+            <dt class="inline text-muted">Hari ini </dt><dd class="num inline" :class="changeClass(account.realized_today)">{{ usd(account.realized_today) }}</dd>
+            <span v-if="account.limits.max_daily_loss_pct > 0" class="text-muted"> · batas rugi {{ account.limits.max_daily_loss_pct }}% ekuitas</span>
           </div>
         </dl>
 
         <div class="mt-4">
-          <EquityChart v-if="report.auto_follow.curve.length >= 2" :points="report.auto_follow.curve" :baseline="report.auto_follow.starting_balance" />
+          <EquityChart v-if="account.curve.length >= 2" :points="account.curve" :baseline="account.starting_balance" />
           <p v-else class="rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted">Kurva terisi tiap 15 menit dan baru tampil setelah ada dua catatan. Riwayat sebelum fitur ini aktif tidak bisa dibuat ulang.</p>
-          <p v-if="report.auto_follow.curve.length >= 2" class="mt-2 text-xs text-muted">Garis putus-putus adalah saldo awal. Dicatat sejak {{ dateTime(report.auto_follow.curve_started_at) }}, jadi drawdown sebelum tanggal itu tidak terhitung.</p>
+          <p v-if="account.curve.length >= 2" class="mt-2 text-xs text-muted">Garis putus-putus adalah saldo awal. Dicatat sejak {{ dateTime(account.curve_started_at) }}, jadi drawdown sebelum tanggal itu tidak terhitung.</p>
         </div>
       </section>
     </template>

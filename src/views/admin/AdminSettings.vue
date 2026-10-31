@@ -3,6 +3,7 @@ import { usePageData } from '@/composables/usePolling'
 import { reactive, ref } from 'vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
+import { useConfirmStore } from '@/stores/confirm'
 import { useToastStore } from '@/stores/toast'
 import AppSelect from '@/components/AppSelect.vue'
 import AppSwitch from '@/components/AppSwitch.vue'
@@ -139,7 +140,7 @@ async function save(group: Group) {
 }
 
 async function reset(field: Field) {
-  if (!confirm(`Kembalikan "${field.label}" ke nilai dari .env?`)) return
+  if (!(await useConfirmStore().confirm({ title: 'Kembalikan ke nilai .env?', message: `"${field.label}" akan memakai nilai dari file .env, dan nilai dari panel dihapus.`, confirmLabel: 'Kembalikan' }))) return
   const { data } = await api.post<SettingsResponse>('/admin/settings/reset', { keys: [field.key] })
   fill(data)
   toast.info(`${field.label} dikembalikan ke .env`)

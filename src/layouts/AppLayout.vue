@@ -15,6 +15,7 @@ import { usePolling } from '@/composables/usePolling'
 import { changeClass, pct, usd } from '@/lib/format'
 import { adminNav as adminArea, type NavItem, tradingNav as trading } from '@/lib/navigation'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 import { useFeedStore } from '@/stores/feed'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useRefreshStore } from '@/stores/refresh'
@@ -22,6 +23,7 @@ import { useRefreshStore } from '@/stores/refresh'
 const auth = useAuthStore()
 const portfolio = usePortfolioStore()
 const feed = useFeedStore()
+const dialog = useConfirmStore()
 const router = useRouter()
 const route = useRoute()
 const refresh = useRefreshStore()
@@ -70,6 +72,7 @@ function isActive(item: NavItem): boolean {
 }
 
 async function logout() {
+  if (!(await dialog.confirm({ title: 'Keluar dari akun?', message: 'Anda perlu login lagi untuk membuka aplikasi. Order dan sinyal tetap berjalan.', confirmLabel: 'Keluar' }))) return
   portfolio.stop()
   await auth.logout()
   router.push('/login')

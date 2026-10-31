@@ -5,6 +5,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
 import { bytes, dateTime, timeAgo } from '@/lib/format'
+import { useConfirmStore } from '@/stores/confirm'
 import { useToastStore } from '@/stores/toast'
 
 interface Backup {
@@ -92,7 +93,7 @@ async function createBackup() {
 }
 
 async function remove(backup: Backup) {
-  if (!confirm(`Hapus ${backup.name}? File tidak bisa dikembalikan.`)) return
+  if (!(await useConfirmStore().confirm({ title: 'Hapus file backup?', message: `${backup.name} tidak bisa dikembalikan setelah dihapus.`, confirmLabel: 'Hapus', tone: 'danger' }))) return
   await api.delete(`/admin/backups/${backup.name}`)
   toast.info(`${backup.name} dihapus`)
   await load()

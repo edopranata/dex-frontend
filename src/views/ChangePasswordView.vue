@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, errorMessage } from '@/lib/api'
 import type { User } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 
 /** First login with the temporary password from an admin: the user must choose their own. */
 const auth = useAuthStore()
@@ -40,6 +41,7 @@ async function submit() {
 }
 
 async function logout() {
+  if (!(await useConfirmStore().confirm({ title: 'Keluar dari akun?', message: 'Password sementara belum diganti. Anda perlu login lagi untuk menggantinya.', confirmLabel: 'Keluar' }))) return
   await auth.logout()
   router.replace({ name: 'login' })
 }

@@ -22,6 +22,13 @@ const toast = useToastStore()
 const tokens = ref<Token[] | null>(null)
 const capacity = ref<{ used: number; max: number } | null>(null)
 const events = ref<WatchlistEvent[]>([])
+const EVENTS_PER_PAGE = 8
+const eventPage = ref(1)
+const eventPages = computed(() => Math.max(1, Math.ceil(events.value.length / EVENTS_PER_PAGE)))
+const eventsOnPage = computed(() => {
+  const page = Math.min(eventPage.value, eventPages.value)
+  return events.value.slice((page - 1) * EVENTS_PER_PAGE, page * EVENTS_PER_PAGE)
+})
 const chains = ref<{ id: string; label: string }[]>([])
 const showAdd = ref(false)
 const search = ref('')
@@ -167,7 +174,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
       <AppSelect v-model="sortKey" aria-label="Urutan" :options="sortOptions" />
     </div>
 
-    <div class="grid gap-section xl:grid-cols-[1fr_20rem] 3xl:grid-cols-[1fr_24rem]">
+    <div class="grid items-start gap-section xl:grid-cols-[1fr_20rem] 3xl:grid-cols-[1fr_24rem]">
       <div class="card animate-fade-up min-w-0 overflow-x-auto">
         <table class="table">
           <thead>
@@ -238,7 +245,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
         </div>
         <p v-if="!events.length" class="mt-3 text-xs text-muted">Belum ada aktivitas. Token yang masuk & keluar otomatis akan dicatat di sini beserta alasannya.</p>
         <TransitionGroup tag="ol" name="row" class="mt-3 space-y-3">
-          <li v-for="e in events" :key="e.id" class="flex gap-2.5">
+          <li v-for="e in eventsOnPage" :key="e.id" class="flex gap-2.5">
             <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold" :class="eventStyle[e.action].class">
               {{ eventStyle[e.action].icon }}
             </span>
@@ -252,6 +259,13 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
             </div>
           </li>
         </TransitionGroup>
+        <div v-if="eventPages > 1" class="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-xs text-muted">
+          <span>Halaman {{ eventPage }} dari {{ eventPages }}</span>
+          <div class="flex gap-1.5">
+            <button type="button" class="btn-ghost px-2 py-1 text-xs" :disabled="eventPage <= 1" aria-label="Halaman sebelumnya" @click="eventPage--">←</button>
+            <button type="button" class="btn-ghost px-2 py-1 text-xs" :disabled="eventPage >= eventPages" aria-label="Halaman berikutnya" @click="eventPage++">→</button>
+          </div>
+        </div>
       </aside>
     </div>
 

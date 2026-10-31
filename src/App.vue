@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import PwaUpdate from '@/components/PwaUpdate.vue'
 import TopProgress from '@/components/TopProgress.vue'
 </script>
@@ -7,4 +8,5 @@ import TopProgress from '@/components/TopProgress.vue'
   <TopProgress />
   <RouterView />
   <PwaUpdate />
+  <ConfirmDialog />
 </template>

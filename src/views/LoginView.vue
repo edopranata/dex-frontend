@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import OtpInput from '@/components/OtpInput.vue'
 import { api, errorMessage } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 
 const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
+const dialog = useConfirmStore()
 
 const email = ref('')
 const password = ref('')
@@ -29,6 +32,7 @@ function enter() {
 }
 
 async function submit() {
+  if (loading.value) return
   loading.value = true
   error.value = null
   try {
@@ -42,6 +46,8 @@ async function submit() {
   } catch (e) {
     error.value = errorMessage(e)
     if (/kedaluwarsa/i.test(error.value)) backToPassword()
+    // A wrong code: start over without clearing boxes by hand.
+    else if (twoFactor.value && !useRecovery.value) code.value = ''
   } finally {
     loading.value = false
   }
@@ -56,7 +62,7 @@ function backToPassword() {
 
 /** Lost the authenticator and the recovery codes: a link to switch 2FA off goes to the account's email. */
 async function requestTwoFactorReset() {
-  if (!confirm('Kirim link ke email akun Anda untuk mematikan 2FA? Setelah itu Anda masuk dengan password saja dan sebaiknya mengaktifkan 2FA lagi.')) return
+  if (!(await dialog.confirm({ title: 'Kirim link reset 2FA?', message: 'Link untuk mematikan 2FA dikirim ke email akun Anda. Setelah itu Anda masuk dengan password saja dan sebaiknya mengaktifkan 2FA lagi.', confirmLabel: 'Kirim link' }))) return
   requestingReset.value = true
   error.value = null
   try {
@@ -90,33 +96,22 @@ function toggleRecovery() {
           <span class="mb-1 block text-xs text-muted">Email</span>
           <input v-model="email" type="email" class="w-full" autocomplete="email" required />
         </label>
-        <label class="block">
-          <span class="mb-1 flex justify-between text-xs text-muted">
-            Password
-            <RouterLink v-if="passwordResetEnabled" :to="{ name: 'forgot-password', query: email ? { email } : {} }" class="text-brand hover:underline">Lupa password?</RouterLink>
-          </span>
-          <input v-model="password" type="password" class="w-full" autocomplete="current-password" required />
-        </label>
+        <div>
+          <label class="block">
+            <span class="mb-1 block text-xs text-muted">Password</span>
+            <input v-model="password" type="password" class="w-full" autocomplete="current-password" required />
+          </label>
+          <RouterLink v-if="passwordResetEnabled" :to="{ name: 'forgot-password', query: email ? { email } : {} }" class="mt-1.5 block text-right text-xs text-brand hover:underline">Lupa password?</RouterLink>
+        </div>
       </template>
       <template v-else>
         <p class="text-sm text-muted">
           {{ useRecovery ? 'Masukkan salah satu kode pemulihan Anda (setiap kode hanya bisa dipakai sekali).' : 'Masukkan kode 6 digit dari aplikasi authenticator Anda.' }}
         </p>
-        <label class="block">
-          <span class="mb-1 block text-xs text-muted">{{ useRecovery ? 'Kode pemulihan' : 'Kode autentikasi' }}</span>
-          <input
-            v-if="!useRecovery"
-            v-model="code"
-            class="num w-full text-center text-lg tracking-[0.4em]"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            maxlength="6"
-            pattern="[0-9]{6}"
-            placeholder="000000"
-            autofocus
-            required
-          />
-          <input v-else v-model="code" class="num w-full text-center tracking-widest uppercase" placeholder="XXXXX-XXXXX" autocomplete="off" autofocus required />
+        <OtpInput v-if="!useRecovery" v-model="code" autofocus :disabled="loading" @complete="submit" />
+        <label v-else class="block">
+          <span class="mb-1 block text-xs text-muted">Kode pemulihan</span>
+          <input v-model="code" class="num w-full text-center tracking-widest uppercase" placeholder="XXXXX-XXXXX" autocomplete="off" autofocus required />
         </label>
         <div class="flex justify-between text-xs">
           <button type="button" class="text-muted hover:text-text" @click="backToPassword">← Kembali</button>
@@ -125,7 +120,7 @@ function toggleRecovery() {
         <p v-if="resetSent" class="rounded-lg bg-up/10 px-3 py-2.5 text-xs text-up">{{ resetSent }} Buka link di email, lalu masuk lagi.</p>
       </template>
       <p v-if="error" class="text-sm text-down">{{ error }}</p>
-      <button class="btn-primary w-full" :disabled="loading">{{ loading ? 'Memeriksa…' : twoFactor ? 'Verifikasi' : 'Masuk' }}</button>
+      <button class="btn-primary w-full" :disabled="loading || (twoFactor && !useRecovery && code.length < 6)">{{ loading ? 'Memeriksa…' : twoFactor ? 'Verifikasi' : 'Masuk' }}</button>
       <p v-if="twoFactor && passwordResetEnabled && !resetSent" class="text-center text-xs text-muted">
         Tidak bisa membuka authenticator dan kode pemulihan hilang?
         <button type="button" class="text-brand hover:underline" :disabled="requestingReset" @click="requestTwoFactorReset">{{ requestingReset ? 'Mengirim…' : 'Reset 2FA lewat email' }}</button>

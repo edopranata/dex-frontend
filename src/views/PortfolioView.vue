@@ -13,6 +13,7 @@ import { changeClass, dateTime, pct, price, qty, usd } from '@/lib/format'
 import { tokenPath } from '@/lib/links'
 import type { Order, OrderHistorySummary, OrderStatus, OrderType, Paginated, Portfolio, Side, Token } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -175,12 +176,13 @@ const winRate = computed(() => {
 })
 
 async function cancel(order: Order) {
+  if (!(await useConfirmStore().confirm({ title: 'Batalkan order ini?', message: 'Order yang menunggu dibatalkan dan dananya kembali ke saldo. Posisi yang sudah terbuka tidak berubah.', confirmLabel: 'Batalkan order', cancelLabel: 'Tidak', tone: 'danger' }))) return
   await api.delete(`/orders/${order.id}`)
   await load()
 }
 
 async function reset() {
-  if (!confirm('Reset portofolio? Semua posisi dan riwayat order akan dihapus dan saldo kembali ke modal awal.')) return
+  if (!(await useConfirmStore().confirm({ title: 'Reset portofolio?', message: 'Semua posisi dan riwayat order dihapus, dan saldo kembali ke modal awal. Ini tidak bisa dibatalkan.', confirmLabel: 'Reset portofolio', tone: 'danger' }))) return
   await api.post('/portfolio/reset')
   await Promise.all([load(), auth.fetchUser()])
 }

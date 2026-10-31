@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
+import OtpInput from '@/components/OtpInput.vue'
 import { api, errorMessage } from '@/lib/api'
 import { dateTime } from '@/lib/format'
 import type { Profile } from '@/lib/types'
+import { useConfirmStore } from '@/stores/confirm'
 import { useToastStore } from '@/stores/toast'
 
 const props = defineProps<{ status: Profile['two_factor']; email: string }>()
 const emit = defineEmits<{ changed: [] }>()
 const toast = useToastStore()
+const dialog = useConfirmStore()
 
 const password = ref('')
 const code = ref('')
@@ -36,6 +39,7 @@ async function start() {
 }
 
 async function confirm() {
+  if (busy.value) return
   const data = await run(async () => (await api.post('/profile/two-factor/confirm', { code: code.value })).data)
   if (data) {
     recoveryCodes.value = data.recovery_codes
@@ -47,6 +51,7 @@ async function confirm() {
 }
 
 async function regenerate() {
+  if (!(await dialog.confirm({ title: 'Buat ulang kode pemulihan?', message: 'Semua kode lama langsung tidak berlaku. Simpan kode yang baru.', confirmLabel: 'Buat ulang', tone: 'danger' }))) return
   const data = await run(async () => (await api.post('/profile/two-factor/recovery-codes', { password: password.value })).data)
   if (data) {
     recoveryCodes.value = data.recovery_codes
@@ -56,7 +61,7 @@ async function regenerate() {
 }
 
 async function disable() {
-  if (!window.confirm('Matikan 2FA? Login hanya akan memakai password.')) return
+  if (!(await dialog.confirm({ title: 'Matikan 2FA?', message: 'Login hanya akan memakai password, sehingga akun lebih mudah diambil alih.', confirmLabel: 'Matikan 2FA', tone: 'danger' }))) return
   const data = await run(async () => (await api.delete('/profile/two-factor', { data: { password: password.value } })).data)
   if (data) {
     password.value = ''
@@ -123,7 +128,7 @@ function download() {
         </p>
         <label class="block">
           <span class="mb-1 block">2. Masukkan kode 6 digit yang muncul</span>
-          <input v-model="code" class="num w-full text-center tracking-[0.4em]" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required />
+          <OtpInput v-model="code" :disabled="busy" label="Kode 6 digit dari authenticator" @complete="confirm" />
         </label>
         <div class="flex gap-2">
           <button type="button" class="btn-ghost" :disabled="busy" @click="setup = null">Batal</button>

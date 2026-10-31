@@ -17,6 +17,7 @@ import { api } from '@/lib/api'
 import { changeClass, compact, pct, price, qty, timeAgo, usd } from '@/lib/format'
 import type { Analysis, Candle, NewsItem, Order, Portfolio, Signal, Token, WhaleTrade } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 import { usePortfolioStore } from '@/stores/portfolio'
 
 /** Slug such as "JOB-SOL", or an old numeric id that is swapped for the slug once the token loads. */
@@ -91,6 +92,7 @@ async function afterTrade() {
 }
 
 async function cancel(order: Order) {
+  if (!(await useConfirmStore().confirm({ title: 'Batalkan order ini?', message: 'Order yang menunggu dibatalkan dan dananya kembali ke saldo. Posisi yang sudah terbuka tidak berubah.', confirmLabel: 'Batalkan order', cancelLabel: 'Tidak', tone: 'danger' }))) return
   await api.delete(`/orders/${order.id}`)
   await loadActivity()
 }

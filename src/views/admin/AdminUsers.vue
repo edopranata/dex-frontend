@@ -6,6 +6,7 @@ import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
 import { dateTime, usd } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
+import { useConfirmStore } from '@/stores/confirm'
 import { useToastStore } from '@/stores/toast'
 
 interface AdminUser {
@@ -26,6 +27,7 @@ interface AdminUser {
 
 const auth = useAuthStore()
 const toast = useToastStore()
+const dialog = useConfirmStore()
 const users = ref<AdminUser[] | null>(null)
 const showForm = ref(false)
 const saving = ref(false)
@@ -91,7 +93,7 @@ async function update(user: AdminUser, payload: Partial<AdminUser> & { password?
 }
 
 async function sendTemporaryPassword(user: AdminUser) {
-  if (!confirm(`Kirim password sementara baru ke ${user.email}? Password lama langsung tidak berlaku.`)) return
+  if (!(await dialog.confirm({ title: 'Kirim password sementara?', message: `Password baru dikirim ke ${user.email}, dan password lama langsung tidak berlaku.`, confirmLabel: 'Kirim' }))) return
   try {
     const { data } = await api.post<{ delivery: Delivery }>(`/admin/users/${user.id}/temporary-password`)
     report(user.email, data.delivery, false)
@@ -102,9 +104,16 @@ async function sendTemporaryPassword(user: AdminUser) {
 }
 
 /** Without email: the admin types a temporary password and passes it on themselves. */
-function resetPassword(user: AdminUser) {
+async function resetPassword(user: AdminUser) {
   const own = user.id === auth.user?.id
-  const password = prompt(own ? 'Password baru Anda (min. 8 karakter):' : `Password sementara untuk ${user.email} (min. 8 karakter). Pemiliknya wajib menggantinya saat masuk:`)
+  const password = await dialog.prompt({
+    title: own ? 'Ganti password Anda' : 'Buat password sementara',
+    message: own ? undefined : `Untuk ${user.email}. Pemiliknya wajib menggantinya saat login, dan Anda yang menyampaikan password ini.`,
+    inputLabel: own ? 'Password baru' : 'Password sementara',
+    inputType: 'password',
+    minLength: 8,
+    confirmLabel: 'Simpan',
+  })
   if (password) update(user, { password }, own ? 'Password Anda diganti' : `Password sementara ${user.email} disimpan`)
 }
 
@@ -116,14 +125,13 @@ function expired(user: AdminUser): boolean {
   return !!user.temporary_password_expires_at && new Date(user.temporary_password_expires_at).getTime() < Date.now()
 }
 
-function resetTwoFactor(user: AdminUser) {
-  if (confirm(`Matikan 2FA ${user.email}? Lakukan hanya jika pemiliknya kehilangan HP dan kode pemulihan, setelah identitasnya dipastikan.`)) {
-    update(user, { disable_two_factor: true }, `2FA ${user.email} dimatikan`)
-  }
+async function resetTwoFactor(user: AdminUser) {
+  const confirmed = await dialog.confirm({ title: 'Matikan 2FA pengguna ini?', message: `Untuk ${user.email}. Lakukan hanya jika pemiliknya kehilangan HP dan kode pemulihan, setelah identitasnya dipastikan.`, confirmLabel: 'Matikan 2FA', tone: 'danger' })
+  if (confirmed) update(user, { disable_two_factor: true }, `2FA ${user.email} dimatikan`)
 }
 
 async function remove(user: AdminUser) {
-  if (!confirm(`Hapus akun ${user.email} beserta portofolio dan order-nya?`)) return
+  if (!(await dialog.confirm({ title: 'Hapus akun ini?', message: `${user.email} beserta portofolio dan order-nya dihapus. Ini tidak bisa dibatalkan.`, confirmLabel: 'Hapus akun', tone: 'danger' }))) return
   try {
     await api.delete(`/admin/users/${user.id}`)
     toast.success(`Akun ${user.email} dihapus`)

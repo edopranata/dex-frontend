@@ -5,6 +5,7 @@ import Skeleton from '@/components/Skeleton.vue'
 import { usePolling } from '@/composables/usePolling'
 import { api, errorMessage } from '@/lib/api'
 import { dateTime, duration, fromNow, timeAgo } from '@/lib/format'
+import { useConfirmStore } from '@/stores/confirm'
 import { useToastStore } from '@/stores/toast'
 import AppSelect from '@/components/AppSelect.vue'
 
@@ -57,7 +58,15 @@ async function load() {
 usePolling(load, 10000)
 watch([filterCommand, filterStatus], load)
 
+/** Manual runs that delete old data or take long enough to deserve a second look. */
+const confirmFirst: Record<string, string> = {
+  'model:prune': 'Data lama yang sudah melewati masa simpan dihapus permanen.',
+  'queue:prune-failed': 'Job gagal yang lebih lama dari 7 hari dihapus permanen.',
+  'market:bootstrap': 'Mengambil ulang data semua token, dan bisa memakan banyak kuota API.',
+}
+
 async function run(command: string) {
+  if (confirmFirst[command] && !(await useConfirmStore().confirm({ title: `Jalankan ${command}?`, message: confirmFirst[command], confirmLabel: 'Jalankan' }))) return
   try {
     await api.post('/admin/tasks/run', { command })
     toast.success(`${command} masuk antrean`, 'Hasil & output muncul di riwayat di bawah.')

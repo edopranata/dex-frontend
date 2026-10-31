@@ -4,6 +4,7 @@ import AppIcon from '@/components/AppIcon.vue'
 import { api, errorMessage } from '@/lib/api'
 import { dateTime } from '@/lib/format'
 import type { Profile } from '@/lib/types'
+import { useConfirmStore } from '@/stores/confirm'
 import { useToastStore } from '@/stores/toast'
 
 const props = defineProps<{ status: Profile['telegram'] }>()
@@ -70,7 +71,7 @@ async function test() {
 }
 
 async function disconnect() {
-  if (!confirm('Putuskan Telegram? Notifikasi tidak akan dikirim lagi.')) return
+  if (!(await useConfirmStore().confirm({ title: 'Putuskan Telegram?', message: 'Notifikasi tidak akan dikirim lagi sampai Anda menautkannya kembali.', confirmLabel: 'Putuskan', tone: 'danger' }))) return
   await api.delete('/profile/telegram')
   toast.info('Telegram diputus')
   emit('changed')

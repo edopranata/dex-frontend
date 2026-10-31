@@ -5,6 +5,7 @@ import StatCard from '@/components/StatCard.vue'
 import { usePolling } from '@/composables/usePolling'
 import { api, errorMessage } from '@/lib/api'
 import { dateTime, timeAgo } from '@/lib/format'
+import { useConfirmStore } from '@/stores/confirm'
 import { useToastStore } from '@/stores/toast'
 
 interface System {
@@ -18,6 +19,7 @@ interface System {
 }
 
 const toast = useToastStore()
+const dialog = useConfirmStore()
 const system = ref<System | null>(null)
 
 async function load() {
@@ -35,6 +37,16 @@ async function action(request: Promise<unknown>, message: string) {
   } catch (error) {
     toast.error('Gagal', errorMessage(error))
   }
+}
+
+async function clearCache() {
+  const confirmed = await dialog.confirm({ title: 'Bersihkan cache aplikasi?', message: 'Data sementara dibuat ulang, jadi halaman bisa melambat sebentar, dan batas request API ikut direset.', confirmLabel: 'Bersihkan' })
+  if (confirmed) action(api.post('/admin/system/cache/clear'), 'Cache dibersihkan')
+}
+
+async function forgetJob(job: System['failed_jobs'][number]) {
+  const confirmed = await dialog.confirm({ title: 'Hapus job gagal ini?', message: `${job.job} dihapus dari daftar dan tidak bisa dijalankan ulang.`, confirmLabel: 'Hapus', tone: 'danger' })
+  if (confirmed) action(api.delete(`/admin/system/failed-jobs/${job.uuid}`), 'Job dihapus')
 }
 
 function schedulerHealthy(at: string | null): boolean {
@@ -82,7 +94,7 @@ function schedulerHealthy(at: string | null): boolean {
           <dt class="text-muted">PHP / Laravel</dt><dd class="num text-right">{{ system.app.php }} / {{ system.app.laravel }}</dd>
           <dt class="text-muted">Zona waktu app</dt><dd class="text-right">{{ system.app.timezone }}</dd>
         </dl>
-        <button class="btn-ghost mt-4 text-xs" @click="action(api.post('/admin/system/cache/clear'), 'Cache dibersihkan')">Bersihkan cache aplikasi</button>
+        <button class="btn-ghost mt-4 text-xs" @click="clearCache">Bersihkan cache aplikasi</button>
       </section>
     </div>
 
@@ -105,7 +117,7 @@ function schedulerHealthy(at: string | null): boolean {
             <td class="whitespace-nowrap text-right text-xs">
               <button class="text-brand hover:underline" @click="action(api.post(`/admin/system/failed-jobs/${job.uuid}/retry`), 'Job dijalankan ulang')">Retry</button>
               <span class="mx-1 text-line">|</span>
-              <button class="text-down hover:underline" @click="action(api.delete(`/admin/system/failed-jobs/${job.uuid}`), 'Job dihapus')">Hapus</button>
+              <button class="text-down hover:underline" @click="forgetJob(job)">Hapus</button>
             </td>
           </tr>
         </tbody>

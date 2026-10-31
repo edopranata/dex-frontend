@@ -133,7 +133,12 @@ export interface Signal extends Levels {
   entry_price: number | null
   exit_price: number | null
   max_tp_hit: number
+  /** Before costs. */
   result_r: number | null
+  /** After fees and slippage. */
+  net_r: number | null
+  cost_r: number | null
+  strategy_version: string | null
   entered_at: string | null
   closed_at: string | null
   created_at: string

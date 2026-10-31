@@ -55,15 +55,25 @@ const router = createRouter({
   ],
 })
 
-// Top loading bar: from leaving a page until the new page's first API calls are answered.
+// Top loading bar: from leaving a page until the new page's first API calls are answered. One hold per
+// navigation: a guard redirect runs beforeEach again but afterEach only once.
+let navigationHold = false
+
+function releaseNavigationHold(delayMs: number) {
+  if (!navigationHold) return
+  navigationHold = false
+  setTimeout(() => useProgressStore().done(), delayMs)
+}
+
 router.beforeEach((to, from) => {
-  if (to.path !== from.path) useProgressStore().start()
+  if (to.path !== from.path && !navigationHold) {
+    navigationHold = true
+    useProgressStore().start()
+  }
 })
-router.afterEach((to, from) => {
-  // Pages start loading on mount, after the page transition; give their requests time to register.
-  if (to.path !== from.path) setTimeout(() => useProgressStore().done(), 300)
-})
-router.onError(() => useProgressStore().done())
+// Pages start loading on mount, after the page transition; give their requests time to register.
+router.afterEach(() => releaseNavigationHold(300))
+router.onError(() => releaseNavigationHold(0))
 
 router.afterEach((to) => {
   const title = [...to.matched].reverse().find((record) => record.meta.title)?.meta.title

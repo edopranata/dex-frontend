@@ -22,7 +22,15 @@ interface Stats {
   win_rate: number | null
   total_r: number
   avg_r: number | null
+  gross_total_r: number
+  avg_cost_r: number | null
+  profit_factor: number | null
   tp_hits: { tp1: number; tp2: number; tp3: number }
+  versions: { version: string; signals: number; win_rate: number; avg_r: number; total_r: number; profit_factor: number | null }[]
+}
+
+function r(value: number | null | undefined): string {
+  return value === null || value === undefined ? '–' : `${value > 0 ? '+' : ''}${value}R`
 }
 
 const stats = ref<Stats | null>(null)
@@ -58,18 +66,44 @@ const statusLabel: Record<string, [string, string]> = {
     <div>
       <h1 class="text-xl font-semibold">Sinyal & rekam jejak</h1>
       <p class="mt-1 text-sm text-muted">
-        Setiap sinyal beli dilacak otomatis: entry di zona, ambil 1/3 di tiap TP, stop pindah ke breakeven setelah TP1. Hasil dalam satuan R (1R = jarak entry ke stop loss).
+        Setiap sinyal beli dilacak otomatis: entry di zona, ambil 1/3 di tiap TP, stop pindah ke breakeven setelah TP1. Hasil dalam satuan R (1R = jarak entry ke stop loss), sudah dikurangi fee dan slippage.
         Pantau angka ini minimal beberapa minggu sebelum memakai sinyal dengan uang sungguhan.
       </p>
     </div>
 
     <div class="grid grid-cols-2 gap-section lg:grid-cols-5">
       <StatCard :loading="!stats" label="Win rate" :value="stats?.win_rate !== null && stats?.win_rate !== undefined ? `${stats.win_rate}%` : '–'" :hint="`${stats?.wins ?? 0} menang / ${stats?.losses ?? 0} kalah`" />
-      <StatCard :loading="!stats" label="Total R" :value="stats ? `${stats.total_r > 0 ? '+' : ''}${stats.total_r}R` : '–'" :tone="(stats?.total_r ?? 0) >= 0 ? 'up' : 'down'" />
-      <StatCard :loading="!stats" label="Rata-rata per trade" :value="stats?.avg_r !== null && stats?.avg_r !== undefined ? `${stats.avg_r}R` : '–'" />
+      <StatCard :loading="!stats" label="Total R bersih" :value="r(stats?.total_r)" :hint="`Sebelum biaya ${r(stats?.gross_total_r)}`" :tone="(stats?.total_r ?? 0) >= 0 ? 'up' : 'down'" />
+      <StatCard :loading="!stats" label="Rata-rata per trade" :value="r(stats?.avg_r)" :hint="`Biaya rata-rata ${stats?.avg_cost_r ?? 0}R · profit factor ${stats?.profit_factor ?? '–'}`" />
       <StatCard :loading="!stats" label="Kena TP1 / TP2 / TP3" :value="stats ? `${stats.tp_hits.tp1} / ${stats.tp_hits.tp2} / ${stats.tp_hits.tp3}` : '–'" :hint="`dari ${stats?.entered ?? 0} sinyal selesai`" />
       <StatCard :loading="!stats" label="Sinyal terbuka" :value="String(stats?.open ?? 0)" :hint="`${stats?.not_entered ?? 0} tidak pernah entry`" />
     </div>
+
+    <section v-if="stats?.versions.length" class="card overflow-x-auto">
+      <h2 class="card-title p-4 pb-2">Hasil per versi strategi</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Versi</th>
+            <th class="text-right!">Sinyal selesai</th>
+            <th class="text-right!">Win rate</th>
+            <th class="text-right!">Rata-rata</th>
+            <th class="text-right!">Total</th>
+            <th class="text-right!">Profit factor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="v in stats.versions" :key="v.version">
+            <td class="num text-sm">{{ v.version || 'tanpa versi' }}<span v-if="v.version === 'v0'" class="ml-2 font-sans text-xs text-muted">pembanding</span></td>
+            <td class="num text-right">{{ v.signals }}</td>
+            <td class="num text-right">{{ v.win_rate }}%</td>
+            <td class="num text-right" :class="v.avg_r > 0 ? 'text-up' : v.avg_r < 0 ? 'text-down' : ''">{{ r(v.avg_r) }}</td>
+            <td class="num text-right" :class="v.total_r > 0 ? 'text-up' : v.total_r < 0 ? 'text-down' : ''">{{ r(v.total_r) }}</td>
+            <td class="num text-right">{{ v.profit_factor ?? '–' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
 
     <div class="card overflow-x-auto">
       <div class="flex gap-1 p-3">
@@ -95,7 +129,7 @@ const statusLabel: Record<string, [string, string]> = {
             <th class="text-right!">TP1 / TP2 / TP3</th>
             <th class="text-right!">Entry → keluar</th>
             <th>Status</th>
-            <th class="text-right!">Hasil</th>
+            <th class="text-right!">Hasil bersih</th>
           </tr>
         </thead>
         <TransitionGroup tag="tbody" name="row">
@@ -114,8 +148,12 @@ const statusLabel: Record<string, [string, string]> = {
             <td class="text-xs whitespace-nowrap" :class="statusLabel[s.status][1]">
               {{ statusLabel[s.status][0] }}<span v-if="s.max_tp_hit"> · TP{{ s.max_tp_hit }}</span>
             </td>
-            <td class="num text-right font-semibold" :class="(s.result_r ?? 0) > 0 ? 'text-up' : (s.result_r ?? 0) < 0 ? 'text-down' : 'text-muted'">
-              {{ s.result_r !== null ? `${s.result_r > 0 ? '+' : ''}${s.result_r}R` : '' }}
+            <td
+              class="num text-right font-semibold"
+              :class="(s.net_r ?? 0) > 0 ? 'text-up' : (s.net_r ?? 0) < 0 ? 'text-down' : 'text-muted'"
+              :title="s.net_r !== null ? `Sebelum biaya ${r(s.result_r)}, biaya ${s.cost_r}R · versi ${s.strategy_version}` : undefined"
+            >
+              {{ s.net_r !== null ? r(s.net_r) : '' }}
             </td>
           </tr>
         </TransitionGroup>

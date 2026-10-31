@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AddTokenDialog from '@/components/AddTokenDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import PriceFlash from '@/components/PriceFlash.vue'
@@ -22,13 +22,13 @@ const toast = useToastStore()
 const tokens = ref<Token[] | null>(null)
 const capacity = ref<{ used: number; max: number } | null>(null)
 const events = ref<WatchlistEvent[]>([])
-const EVENTS_PER_PAGE = 8
+const EVENTS_PER_PAGE = 10
 const eventPage = ref(1)
+const eventList = ref<HTMLElement | null>(null)
 const eventPages = computed(() => Math.max(1, Math.ceil(events.value.length / EVENTS_PER_PAGE)))
-const eventsOnPage = computed(() => {
-  const page = Math.min(eventPage.value, eventPages.value)
-  return events.value.slice((page - 1) * EVENTS_PER_PAGE, page * EVENTS_PER_PAGE)
-})
+const shownEventPage = computed(() => Math.min(eventPage.value, eventPages.value))
+const eventsOnPage = computed(() => events.value.slice((shownEventPage.value - 1) * EVENTS_PER_PAGE, shownEventPage.value * EVENTS_PER_PAGE))
+watch(shownEventPage, () => eventList.value?.scrollTo({ top: 0 }))
 const chains = ref<{ id: string; label: string }[]>([])
 const showAdd = ref(false)
 const search = ref('')
@@ -174,7 +174,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
       <AppSelect v-model="sortKey" aria-label="Urutan" :options="sortOptions" />
     </div>
 
-    <div class="grid items-start gap-section xl:grid-cols-[1fr_20rem] 3xl:grid-cols-[1fr_24rem]">
+    <div class="grid gap-section xl:min-h-[32rem] xl:grid-cols-[1fr_20rem] 3xl:grid-cols-[1fr_24rem]">
       <div class="card animate-fade-up min-w-0 overflow-x-auto">
         <table class="table">
           <thead>
@@ -238,13 +238,21 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
         </EmptyState>
       </div>
 
-      <aside class="card animate-fade-up h-fit p-4" style="animation-delay: 80ms">
+      <aside class="card animate-fade-up flex flex-col p-4 xl:h-0 xl:min-h-full" style="animation-delay: 80ms">
         <div class="flex items-center justify-between">
           <h2 class="card-title">Aktivitas Market</h2>
           <RouterLink to="/discover" class="text-xs text-brand hover:underline">Temukan →</RouterLink>
         </div>
+        <div v-if="eventPages > 1" class="mt-2 flex items-center justify-between gap-2 border-b border-line pb-2 text-xs text-muted">
+          <span>Halaman {{ shownEventPage }} dari {{ eventPages }}</span>
+          <div class="flex gap-1.5">
+            <button type="button" class="btn-ghost px-2 py-1 text-xs" :disabled="shownEventPage <= 1" aria-label="Halaman sebelumnya" @click="eventPage = shownEventPage - 1">←</button>
+            <button type="button" class="btn-ghost px-2 py-1 text-xs" :disabled="shownEventPage >= eventPages" aria-label="Halaman berikutnya" @click="eventPage = shownEventPage + 1">→</button>
+          </div>
+        </div>
         <p v-if="!events.length" class="mt-3 text-xs text-muted">Belum ada aktivitas. Token yang masuk & keluar otomatis akan dicatat di sini beserta alasannya.</p>
-        <TransitionGroup tag="ol" name="row" class="mt-3 space-y-3">
+        <!-- Scrolls inside the card, whose height follows the token table beside it -->
+        <ol ref="eventList" class="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto">
           <li v-for="e in eventsOnPage" :key="e.id" class="flex gap-2.5">
             <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold" :class="eventStyle[e.action].class">
               {{ eventStyle[e.action].icon }}
@@ -258,14 +266,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
               <p class="mt-0.5 leading-relaxed text-muted">{{ e.reason }}</p>
             </div>
           </li>
-        </TransitionGroup>
-        <div v-if="eventPages > 1" class="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-xs text-muted">
-          <span>Halaman {{ eventPage }} dari {{ eventPages }}</span>
-          <div class="flex gap-1.5">
-            <button type="button" class="btn-ghost px-2 py-1 text-xs" :disabled="eventPage <= 1" aria-label="Halaman sebelumnya" @click="eventPage--">←</button>
-            <button type="button" class="btn-ghost px-2 py-1 text-xs" :disabled="eventPage >= eventPages" aria-label="Halaman berikutnya" @click="eventPage++">→</button>
-          </div>
-        </div>
+        </ol>
       </aside>
     </div>
 

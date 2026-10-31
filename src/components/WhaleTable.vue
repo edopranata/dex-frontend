@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { explorerUrl, price, qty, shortAddress, timeAgo, usd } from '@/lib/format'
+import { price, qty, shortAddress, timeAgo, usd } from '@/lib/format'
 import type { WhaleTrade } from '@/lib/types'
 import TokenAvatar from './TokenAvatar.vue'
 import { tokenPath } from '@/lib/links'
@@ -39,15 +39,9 @@ defineProps<{ trades: WhaleTrade[]; chain?: string; showToken?: boolean }>()
           <td class="num text-right text-muted">{{ price(trade.price_usd) }}</td>
           <td class="num text-right text-muted">{{ qty(trade.token_amount) }}</td>
           <td class="num text-xs">
-            <a
-              v-if="trade.wallet && explorerUrl(chain ?? trade.token?.chain_id ?? '', 'address', trade.wallet)"
-              :href="explorerUrl(chain ?? trade.token?.chain_id ?? '', 'address', trade.wallet)!"
-              target="_blank"
-              rel="noopener"
-              class="text-brand hover:underline"
-            >
+            <RouterLink v-if="trade.wallet && (chain ?? trade.token?.chain_id)" :to="`/wallets/${chain ?? trade.token?.chain_id}/${trade.wallet}`" class="text-brand hover:underline" :title="trade.wallet">
               {{ shortAddress(trade.wallet) }}
-            </a>
+            </RouterLink>
             <span v-else>{{ shortAddress(trade.wallet) }}</span>
           </td>
         </tr>

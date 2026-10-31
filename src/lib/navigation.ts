@@ -17,6 +17,7 @@ export const tradingNav: NavItem[] = [
   { to: '/signals', label: 'Sinyal', icon: 'signals' },
   { to: '/reports', label: 'Laporan', icon: 'report' },
   { to: '/whales', label: 'Whale Tracker', icon: 'whale' },
+  { to: '/wallets', label: 'Wallet', icon: 'wallet' },
   { to: '/news', label: 'Berita', icon: 'news' },
   { to: '/portfolio', label: 'Portofolio', icon: 'portfolio' },
 ]

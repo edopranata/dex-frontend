@@ -9,7 +9,10 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 /** How often an open app asks the server whether a new version was deployed. */
-const UPDATE_CHECK_MS = 30 * 60 * 1000
+const UPDATE_CHECK_MS = 5 * 60 * 1000
+
+/** Coming back to the app also checks, but switching windows quickly should not repeat it. */
+const MIN_CHECK_GAP_MS = 60 * 1000
 
 const standaloneQuery = window.matchMedia('(display-mode: standalone)')
 
@@ -42,7 +45,18 @@ export const usePwaStore = defineStore('pwa', () => {
     immediate: true,
     onNeedRefresh: () => (needRefresh.value = true),
     onRegisteredSW(_url, registration) {
-      if (registration) setInterval(() => registration.update(), UPDATE_CHECK_MS)
+      if (!registration) return
+      let lastCheck = 0
+      const check = () => {
+        const now = Date.now()
+        if (document.visibilityState !== 'visible' || !navigator.onLine || registration.installing || now - lastCheck < MIN_CHECK_GAP_MS) return
+        lastCheck = now
+        // A failed check is not a problem: the next one tries again.
+        registration.update().catch(() => {})
+      }
+      setInterval(check, UPDATE_CHECK_MS)
+      document.addEventListener('visibilitychange', check)
+      window.addEventListener('focus', check)
     },
   })
 

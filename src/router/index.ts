@@ -31,6 +31,7 @@ const router = createRouter({
         { path: 'tokens/:id', name: 'token', component: () => import('@/views/TokenView.vue'), props: true, meta: { title: 'Token' } },
         { path: 'portfolio', name: 'portfolio', component: () => import('@/views/PortfolioView.vue'), meta: { title: 'Portofolio' } },
         { path: 'signals', name: 'signals', component: () => import('@/views/SignalsView.vue'), meta: { title: 'Sinyal' } },
+        { path: 'reports', name: 'reports', component: () => import('@/views/ReportsView.vue'), meta: { title: 'Laporan' } },
         { path: 'whales', name: 'whales', component: () => import('@/views/WhalesView.vue'), meta: { title: 'Whale Tracker' } },
         { path: 'news', name: 'news', component: () => import('@/views/NewsView.vue'), meta: { title: 'Berita' } },
         { path: 'profile/:tab?', name: 'profile', component: () => import('@/views/ProfileView.vue'), props: true, meta: { title: 'Profil' } },

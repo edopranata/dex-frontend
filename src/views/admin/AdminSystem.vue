@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import ContainerPanel from '@/components/ContainerPanel.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import StatCard from '@/components/StatCard.vue'
 import { usePolling } from '@/composables/usePolling'
@@ -62,6 +63,8 @@ function schedulerHealthy(at: string | null): boolean {
       <StatCard label="Database" :value="system.database.size_mb !== null ? `${system.database.size_mb} MB` : system.database.driver" :hint="`Redis: ${system.redis?.memory ?? '–'}`" />
       <StatCard label="Disk" :value="`${system.disk.free_gb} GB kosong`" :hint="`dari ${system.disk.total_gb} GB`" :tone="system.disk.free_gb < 5 ? 'down' : undefined" />
     </div>
+
+    <ContainerPanel />
 
     <div class="grid gap-section lg:grid-cols-2">
       <section class="card p-4">

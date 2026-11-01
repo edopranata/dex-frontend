@@ -108,6 +108,7 @@ export function fromNow(iso: string | null | undefined): string {
   const diff = (new Date(iso).getTime() - Date.now()) / 1000
   if (diff <= 0) return timeAgo(iso)
   if (diff < 60) return `dalam ${Math.ceil(diff)} dtk`
-  if (diff < 3600) return `dalam ${Math.ceil(diff / 60)} mnt`
-  return `dalam ${Math.floor(diff / 3600)} jam ${Math.ceil((diff % 3600) / 60)} mnt`
+  const minutes = Math.ceil(diff / 60)
+  if (minutes < 60) return `dalam ${minutes} mnt`
+  return `dalam ${Math.floor(minutes / 60)} jam${minutes % 60 ? ` ${minutes % 60} mnt` : ''}`
 }

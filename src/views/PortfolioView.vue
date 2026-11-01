@@ -12,6 +12,7 @@ import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
 import { changeClass, dateTime, pct, price, qty, usd } from '@/lib/format'
 import { tokenPath } from '@/lib/links'
+import { orderStatusClass, orderStatusLabel } from '@/lib/orders'
 import type { Order, OrderHistorySummary, OrderStatus, OrderType, Paginated, Portfolio, Side, Token } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
 import { useConfirmStore } from '@/stores/confirm'
@@ -188,8 +189,6 @@ async function reset() {
   await Promise.all([load(), auth.fetchUser()])
 }
 
-const statusLabel: Record<string, string> = { filled: 'Terisi', pending: 'Menunggu', cancelled: 'Dibatalkan', rejected: 'Ditolak' }
-const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-warn', cancelled: 'text-muted', rejected: 'text-down' }
 </script>
 
 <template>
@@ -338,7 +337,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
               <td class="num text-right text-muted">{{ usd(o.fee_usd) }}</td>
               <td class="num text-right text-muted">{{ o.slippage_pct !== null ? pct(o.slippage_pct, 3) : '–' }}</td>
               <td class="num text-right" :class="changeClass(o.realized_pnl)">{{ o.realized_pnl !== null ? usd(o.realized_pnl) : '' }}</td>
-              <td class="text-xs" :class="statusClass[o.status]" :title="o.note ?? ''">{{ statusLabel[o.status] ?? o.status }}</td>
+              <td class="text-xs" :class="orderStatusClass[o.status]" :title="o.note ?? ''">{{ orderStatusLabel[o.status] ?? o.status }}</td>
               <td><button v-if="o.status === 'pending'" class="text-xs text-down hover:underline" @click="cancel(o)">Batal</button></td>
             </tr>
           </TransitionGroup>

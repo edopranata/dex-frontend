@@ -14,6 +14,9 @@ const UPDATE_CHECK_MS = 5 * 60 * 1000
 /** Coming back to the app also checks, but switching windows quickly should not repeat it. */
 const MIN_CHECK_GAP_MS = 60 * 1000
 
+/** A controlled tab normally reloads well before this, once the new worker has taken over. */
+const RELOAD_FALLBACK_MS = 3000
+
 const standaloneQuery = window.matchMedia('(display-mode: standalone)')
 
 /**
@@ -71,10 +74,16 @@ export const usePwaStore = defineStore('pwa', () => {
     return outcome
   }
 
-  /** Switch to the waiting new version and reload. */
+  /**
+   * Switch to the new version and reload. The library reloads when the new worker takes control, but a
+   * tab opened on a first visit is not controlled by any worker: the new one is already active without
+   * waiting, and that signal never comes. So reload anyway, at once when nothing is waiting.
+   */
   async function update() {
     updating.value = true
+    const registration = await navigator.serviceWorker?.getRegistration()
     await updateServiceWorker(true)
+    setTimeout(() => window.location.reload(), registration?.waiting ? RELOAD_FALLBACK_MS : 0)
   }
 
   return { installed, canInstall, isIos, needRefresh, updating, install, update }

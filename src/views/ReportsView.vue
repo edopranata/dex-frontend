@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import AccountPortfolio from '@/components/AccountPortfolio.vue'
 import AppSelect from '@/components/AppSelect.vue'
 import EquityChart from '@/components/EquityChart.vue'
 import RecommendationBadge from '@/components/RecommendationBadge.vue'
@@ -82,6 +83,8 @@ const versionOptions = computed(() => [
 ])
 
 const selectedKey = ref('all')
+const accountTab = ref<'detail' | 'portfolio'>('detail')
+const accountTabs = [{ value: 'detail', label: 'Detail akun' }, { value: 'portfolio', label: 'Portofolio' }] as const
 const account = computed(() => report.value?.accounts.find((a) => a.key === selectedKey.value) ?? report.value?.accounts[0] ?? null)
 
 function buyingStatus(a: Account): { label: string; tone?: 'up' | 'down'; hint: string } {
@@ -268,46 +271,66 @@ function week(start: string): string {
       </section>
 
       <section v-if="account" class="card p-4">
-        <h2 class="card-title">Detail akun: {{ account.label }}</h2>
-
-        <div class="mt-3 grid grid-cols-2 gap-section lg:grid-cols-4">
-          <div>
-            <p class="text-xs text-muted">Ekuitas</p>
-            <p class="num text-lg font-semibold">{{ usd(account.equity_usd) }}</p>
-            <p class="num text-xs" :class="changeClass(account.total_pnl)">{{ pct(account.total_pnl_pct) }} dari {{ usd(account.starting_balance) }}</p>
-          </div>
-          <div>
-            <p class="text-xs text-muted">Drawdown terburuk</p>
-            <p class="num text-lg font-semibold">{{ percent(account.max_drawdown_pct) }}</p>
-            <p class="text-xs text-muted">Target di bawah 15%</p>
-          </div>
-          <div>
-            <p class="text-xs text-muted">Posisi</p>
-            <p class="num text-lg font-semibold">{{ account.open_positions }} terbuka</p>
-            <p class="text-xs text-muted">{{ account.pending_orders }} order menunggu · {{ account.trades }} transaksi</p>
-          </div>
-          <div>
-            <p class="text-xs text-muted">Pembelian baru</p>
-            <p class="text-lg font-semibold" :class="{ 'text-up': buying?.tone === 'up', 'text-down': buying?.tone === 'down' }">{{ buying?.label }}</p>
-            <p class="text-xs text-muted">{{ buying?.hint }}</p>
+        <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 class="card-title">Akun: {{ account.label }}</h2>
+          <div class="inline-flex rounded-lg border border-line bg-panel-2/60 p-0.5 text-xs" role="tablist" aria-label="Isi akun">
+            <button
+              v-for="t in accountTabs"
+              :key="t.value"
+              type="button"
+              role="tab"
+              class="rounded-md px-3 py-1 transition-colors duration-150"
+              :class="accountTab === t.value ? 'bg-brand/20 font-medium text-text' : 'text-muted hover:text-text'"
+              :aria-selected="accountTab === t.value"
+              @click="accountTab = t.value"
+            >
+              {{ t.label }}
+            </button>
           </div>
         </div>
 
-        <dl class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
-          <div><dt class="inline text-muted">Terealisasi </dt><dd class="num inline" :class="changeClass(account.realized_pnl)">{{ usd(account.realized_pnl) }}</dd></div>
-          <div><dt class="inline text-muted">Belum terealisasi </dt><dd class="num inline" :class="changeClass(account.unrealized_pnl)">{{ usd(account.unrealized_pnl) }}</dd></div>
-          <div><dt class="inline text-muted">Fee </dt><dd class="num inline">{{ usd(account.fees_paid) }}</dd></div>
-          <div>
-            <dt class="inline text-muted">Hari ini </dt><dd class="num inline" :class="changeClass(account.realized_today)">{{ usd(account.realized_today) }}</dd>
-            <span v-if="account.limits.max_daily_loss_pct > 0" class="text-muted"> · batas rugi {{ account.limits.max_daily_loss_pct }}% ekuitas</span>
-          </div>
-        </dl>
+        <AccountPortfolio v-if="accountTab === 'portfolio'" class="mt-3" :account-key="account.key" />
 
-        <div class="mt-4">
-          <EquityChart v-if="account.curve.length >= 2" :points="account.curve" :baseline="account.starting_balance" />
-          <p v-else class="rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted">Kurva terisi tiap 15 menit dan baru tampil setelah ada dua catatan. Riwayat sebelum fitur ini aktif tidak bisa dibuat ulang.</p>
-          <p v-if="account.curve.length >= 2" class="mt-2 text-xs text-muted">Garis putus-putus adalah saldo awal. Dicatat sejak {{ dateTime(account.curve_started_at) }}, jadi drawdown sebelum tanggal itu tidak terhitung.</p>
-        </div>
+        <template v-else>
+          <div class="mt-3 grid grid-cols-2 gap-section lg:grid-cols-4">
+            <div>
+              <p class="text-xs text-muted">Ekuitas</p>
+              <p class="num text-lg font-semibold">{{ usd(account.equity_usd) }}</p>
+              <p class="num text-xs" :class="changeClass(account.total_pnl)">{{ pct(account.total_pnl_pct) }} dari {{ usd(account.starting_balance) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted">Drawdown terburuk</p>
+              <p class="num text-lg font-semibold">{{ percent(account.max_drawdown_pct) }}</p>
+              <p class="text-xs text-muted">Target di bawah 15%</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted">Posisi</p>
+              <p class="num text-lg font-semibold">{{ account.open_positions }} terbuka</p>
+              <p class="text-xs text-muted">{{ account.pending_orders }} order menunggu · {{ account.trades }} transaksi</p>
+            </div>
+            <div>
+              <p class="text-xs text-muted">Pembelian baru</p>
+              <p class="text-lg font-semibold" :class="{ 'text-up': buying?.tone === 'up', 'text-down': buying?.tone === 'down' }">{{ buying?.label }}</p>
+              <p class="text-xs text-muted">{{ buying?.hint }}</p>
+            </div>
+          </div>
+
+          <dl class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
+            <div><dt class="inline text-muted">Terealisasi </dt><dd class="num inline" :class="changeClass(account.realized_pnl)">{{ usd(account.realized_pnl) }}</dd></div>
+            <div><dt class="inline text-muted">Belum terealisasi </dt><dd class="num inline" :class="changeClass(account.unrealized_pnl)">{{ usd(account.unrealized_pnl) }}</dd></div>
+            <div><dt class="inline text-muted">Fee </dt><dd class="num inline">{{ usd(account.fees_paid) }}</dd></div>
+            <div>
+              <dt class="inline text-muted">Hari ini </dt><dd class="num inline" :class="changeClass(account.realized_today)">{{ usd(account.realized_today) }}</dd>
+              <span v-if="account.limits.max_daily_loss_pct > 0" class="text-muted"> · batas rugi {{ account.limits.max_daily_loss_pct }}% ekuitas</span>
+            </div>
+          </dl>
+
+          <div class="mt-4">
+            <EquityChart v-if="account.curve.length >= 2" :points="account.curve" :baseline="account.starting_balance" />
+            <p v-else class="rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted">Kurva terisi tiap 15 menit dan baru tampil setelah ada dua catatan. Riwayat sebelum fitur ini aktif tidak bisa dibuat ulang.</p>
+            <p v-if="account.curve.length >= 2" class="mt-2 text-xs text-muted">Garis putus-putus adalah saldo awal. Dicatat sejak {{ dateTime(account.curve_started_at) }}, jadi drawdown sebelum tanggal itu tidak terhitung.</p>
+          </div>
+        </template>
       </section>
     </template>
   </div>

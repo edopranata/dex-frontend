@@ -12,7 +12,7 @@ import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
 import { changeClass, dateTime, pct, price, qty, usd } from '@/lib/format'
 import { tokenPath } from '@/lib/links'
-import { orderStatusClass, orderStatusLabel } from '@/lib/orders'
+import { orderStatusClass, orderStatusLabel, targetLabel } from '@/lib/orders'
 import type { Order, OrderHistorySummary, OrderStatus, OrderType, Paginated, Portfolio, Side, Token } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
 import { useConfirmStore } from '@/stores/confirm'
@@ -329,6 +329,7 @@ async function reset() {
               </td>
               <td class="whitespace-nowrap">
                 <OrderKind :side="o.side" :type="o.type" />
+                <span v-if="targetLabel(o.note)" class="badge-mini ml-1 bg-brand/15 text-brand">{{ targetLabel(o.note) }}</span>
                 <span v-if="o.signal_id" class="badge-mini ml-1 bg-brand/15 text-brand" title="Order dari sinyal">Sinyal</span>
               </td>
               <td class="num text-right">{{ price(o.trigger_price) }}</td>

@@ -8,7 +8,7 @@ import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
 import { changeClass, dateTime, pct, price, qty, usd } from '@/lib/format'
 import { tokenPath } from '@/lib/links'
-import { orderStatusClass, orderStatusLabel } from '@/lib/orders'
+import { orderStatusClass, orderStatusLabel, targetLabel } from '@/lib/orders'
 import type { Order, Paginated, Position } from '@/lib/types'
 
 interface AccountPortfolio {
@@ -108,7 +108,10 @@ watch(
                 <td>
                   <RouterLink v-if="o.token" :to="tokenPath(o.token)" class="hover:text-brand">{{ o.token.symbol }}</RouterLink>
                 </td>
-                <td class="whitespace-nowrap"><OrderKind :side="o.side" :type="o.type" /></td>
+                <td class="whitespace-nowrap">
+                  <OrderKind :side="o.side" :type="o.type" />
+                  <span v-if="targetLabel(o.note)" class="badge-mini ml-1 bg-brand/15 text-brand">{{ targetLabel(o.note) }}</span>
+                </td>
                 <td class="num text-right">{{ price(o.trigger_price) }}</td>
                 <td class="num text-right">{{ usd(o.total_usd ?? o.amount_usd) }}</td>
               </tr>
@@ -126,6 +129,7 @@ watch(
                 <th>Waktu</th>
                 <th>Token</th>
                 <th>Jenis</th>
+                <th class="text-right!">Pemicu</th>
                 <th class="text-right!">Harga isi</th>
                 <th class="text-right!">Total</th>
                 <th class="text-right!">Fee</th>
@@ -139,7 +143,11 @@ watch(
                 <td>
                   <RouterLink v-if="o.token" :to="tokenPath(o.token)" class="hover:text-brand">{{ o.token.symbol }}</RouterLink>
                 </td>
-                <td class="whitespace-nowrap"><OrderKind :side="o.side" :type="o.type" /></td>
+                <td class="whitespace-nowrap">
+                  <OrderKind :side="o.side" :type="o.type" />
+                  <span v-if="targetLabel(o.note)" class="badge-mini ml-1 bg-brand/15 text-brand">{{ targetLabel(o.note) }}</span>
+                </td>
+                <td class="num text-right">{{ price(o.trigger_price) }}</td>
                 <td class="num text-right">{{ price(o.filled_price) }}</td>
                 <td class="num text-right">{{ usd(o.total_usd ?? o.amount_usd) }}</td>
                 <td class="num text-right text-muted">{{ usd(o.fee_usd) }}</td>

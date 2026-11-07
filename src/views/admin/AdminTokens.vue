@@ -4,8 +4,9 @@ import EmptyState from '@/components/EmptyState.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import StatCard from '@/components/StatCard.vue'
 import { usePolling } from '@/composables/usePolling'
-import { api } from '@/lib/api'
+import { api, errorMessage } from '@/lib/api'
 import { dateTime, timeAgo } from '@/lib/format'
+import { useToastStore } from '@/stores/toast'
 
 interface TokenRow {
   id: number
@@ -24,6 +25,7 @@ interface TokenRow {
   candle_rows: number
   latest_15m_at: string | null
   fetch: 'every_15m' | 'rotation'
+  gap: boolean
   signals: number
 }
 
@@ -31,6 +33,7 @@ interface Summary {
   tokens: number
   in_market: number
   out_of_market: number
+  gaps: number
   out_groups: { under_7: number; '7_to_30': number; over_30: number }
   rotation_per_hour: number
   rotation_hours: number | null
@@ -53,6 +56,23 @@ async function load() {
 }
 
 usePolling(load, 60000)
+
+const toast = useToastStore()
+const queued = ref(new Set<number>())
+
+/** One request of 1,000 15m candles (±10 days) through the same rate-limited queue. */
+async function fill(t: TokenRow) {
+  queued.value = new Set(queued.value).add(t.id)
+  try {
+    const { data } = await api.post<{ message: string }>(`/admin/tokens/${t.id}/candles`)
+    toast.success(data.message)
+  } catch (e) {
+    toast.error(errorMessage(e))
+    const next = new Set(queued.value)
+    next.delete(t.id)
+    queued.value = next
+  }
+}
 
 const rows = computed(() => {
   const term = search.value.trim().toLowerCase()
@@ -93,6 +113,10 @@ const timeframes = ['15m', '1h', '4h', '1d']
         <StatCard label="Candle tersimpan" :value="number(summary.candle_rows)" :hint="`${number(summary.candle_rows_out_of_market)} milik token yang sudah keluar`" />
       </div>
 
+      <p v-if="summary.gaps" class="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm">
+        {{ summary.gaps }} token punya data 15m lebih lama dari 7 hari, jadi giliran berikutnya akan meninggalkan celah. Tekan "Ambil 1.000 candle" di barisnya untuk mengisi ±10 hari terakhir.
+      </p>
+
       <p v-if="rotationLate" class="rounded-lg border border-down/40 bg-down/10 px-3 py-2 text-sm text-down">
         Giliran sudah lebih lama dari jangkauan isi celah (7 hari), jadi data 15m token yang keluar mulai bolong. Naikkan jumlah token per jam atau berhenti mengambil token yang sudah lama keluar.
       </p>
@@ -131,6 +155,7 @@ const timeframes = ['15m', '1h', '4h', '1d']
                 <th>15m terakhir</th>
                 <th>Pengambilan</th>
                 <th class="text-right">Sinyal</th>
+                <th><span class="sr-only">Aksi</span></th>
               </tr>
             </thead>
             <tbody>
@@ -158,9 +183,24 @@ const timeframes = ['15m', '1h', '4h', '1d']
                   {{ number(t.candle_rows) }}
                   <span class="block text-[11px] text-muted">{{ timeframes.map((tf) => `${tf} ${number(t.candles[tf] ?? 0)}`).join(' · ') }}</span>
                 </td>
-                <td class="whitespace-nowrap">{{ t.latest_15m_at ? timeAgo(t.latest_15m_at) : '–' }}</td>
+                <td class="whitespace-nowrap">
+                  {{ t.latest_15m_at ? timeAgo(t.latest_15m_at) : '–' }}
+                  <span v-if="t.gap" class="block text-[11px] font-medium text-warn">Data bolong</span>
+                </td>
                 <td class="text-xs whitespace-nowrap">{{ t.fetch === 'every_15m' ? 'Tiap 15 menit' : 'Bergiliran' }}</td>
                 <td class="num text-right">{{ t.signals }}</td>
+                <td class="whitespace-nowrap">
+                  <button
+                    type="button"
+                    class="rounded-md border px-2 py-1 text-xs transition-colors duration-150 disabled:opacity-50"
+                    :class="t.gap ? 'border-warn/60 text-warn hover:bg-warn/10' : 'border-line text-muted hover:text-text'"
+                    :disabled="queued.has(t.id)"
+                    :title="'Satu permintaan GeckoTerminal: 1.000 candle 15m (±10 hari), lalu 1h, 4h, dan 1d dirakit ulang'"
+                    @click="fill(t)"
+                  >
+                    {{ queued.has(t.id) ? 'Masuk antrean' : 'Ambil 1.000 candle' }}
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>

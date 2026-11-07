@@ -28,6 +28,7 @@ export const adminNav: NavItem[] = [
   { to: '/admin/users', label: 'Pengguna', icon: 'users' },
   { to: '/admin/backups', label: 'Backup', icon: 'database' },
   { to: '/admin/logs', label: 'Log', icon: 'file' },
+  { to: '/admin/tokens', label: 'Token', icon: 'market' },
   { to: '/admin/tasks', label: 'Tugas terjadwal', icon: 'clock' },
   { to: '/admin/system', label: 'Sistem', icon: 'server' },
   { to: '/admin/containers', label: 'Container', icon: 'box' },

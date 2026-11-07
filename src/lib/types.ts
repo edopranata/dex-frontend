@@ -288,3 +288,79 @@ export interface WatchlistEvent {
   created_at: string
   token: { id: number; slug: string; symbol: string; chain_id: string; image_url: string | null; is_active: boolean }
 }
+
+/** A fill drawn on the candle chart: a buy below the bar, a sale above it. */
+export interface ChartMarker {
+  time: number
+  side: 'buy' | 'sell'
+  text: string
+  tone?: 'up' | 'down'
+}
+
+export type LotExit = 'all_targets' | 'breakeven' | 'stop_loss' | 'signal_closed' | 'data_closure' | 'other'
+
+export interface AccountLot {
+  id: number
+  token: { symbol: string; slug: string }
+  signal: { id: number; recommendation: Recommendation; version: string | null; status: string; net_r: number | null }
+  status: 'open' | 'closed'
+  bought_at: string | null
+  buy_price: number
+  amount_usd: number
+  targets_hit: number
+  exit: LotExit | null
+  closed_at: string | null
+  exit_price: number | null
+  pnl_usd: number
+  r: number | null
+  hours: number | null
+  remaining: number
+  unrealized_usd: number | null
+}
+
+export interface AccountLotSummary {
+  lots: number
+  wins: number
+  win_rate: number | null
+  avg_r: number | null
+  total_r: number
+  profit_factor: number | null
+  pnl_usd: number
+  signal_total_r: number
+  avg_hours: number | null
+}
+
+export interface AccountReportData {
+  key: string
+  label: string
+  version: string | null
+  summary: AccountLotSummary
+  criteria: { label: string; target: string; value: string; passed: boolean; progress?: number }[]
+  funnel: {
+    signals: number
+    bought: number
+    filled: number
+    waiting: number
+    cancelled: number
+    skipped: number
+    skipped_by_reason: Record<string, number>
+    unknown: number
+    open_lots: number
+    closed_lots: number
+    winning_lots: number
+    missed_signals: number
+    missed_r: number
+  }
+  exits: { exit: LotExit; lots: number; total_r: number; pnl_usd: number }[]
+  weeks: (AccountLotSummary & { week_start: string; cumulative_pnl_usd: number })[]
+  lots: AccountLot[]
+}
+
+export interface LotDetail {
+  id: number
+  account: { key: string; label: string } | null
+  token: { symbol: string; slug: string }
+  signal: { id: number; recommendation: Recommendation; status: string; version: string | null; entry_low: number; entry_high: number; stop_loss: number; take_profits: number[] }
+  stop: number | null
+  fills: { id: number; at: string | null; side: 'buy' | 'sell'; type: string; price: number; quantity: number; note: string | null }[]
+}

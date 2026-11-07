@@ -3,6 +3,7 @@ import {
   CandlestickSeries,
   ColorType,
   createChart,
+  createSeriesMarkers,
   CrosshairMode,
   HistogramSeries,
   LineSeries,
@@ -10,16 +11,19 @@ import {
   type IChartApi,
   type IPriceLine,
   type ISeriesApi,
+  type ISeriesMarkersPluginApi,
+  type SeriesMarker,
+  type Time,
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { price as formatPrice } from '@/lib/format'
-import type { Candle, Levels } from '@/lib/types'
+import type { Candle, ChartMarker, Levels } from '@/lib/types'
 import { themeColor, useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
 
-const props = defineProps<{ candles: Candle[]; levels?: Levels | null; livePrice?: number | null }>()
+const props = defineProps<{ candles: Candle[]; levels?: Levels | null; livePrice?: number | null; markers?: ChartMarker[] }>()
 
 const container = ref<HTMLDivElement>()
 let chart: IChartApi | undefined
@@ -28,6 +32,7 @@ let volumeSeries: ISeriesApi<'Histogram'> | undefined
 let ema20Series: ISeriesApi<'Line'> | undefined
 let ema50Series: ISeriesApi<'Line'> | undefined
 let priceLines: IPriceLine[] = []
+let markerPlugin: ISeriesMarkersPluginApi<Time> | undefined
 let lastCandle: Candle | undefined
 
 function ema(values: number[], period: number): (number | null)[] {
@@ -72,6 +77,7 @@ function render() {
 
   lastCandle = candles.at(-1) ? { ...candles.at(-1)! } : undefined
   drawLevels()
+  drawMarkers()
   chart.timeScale().fitContent()
 }
 
@@ -93,6 +99,32 @@ function drawLevels() {
   for (const [p, color, title, lineStyle] of lines) {
     priceLines.push(candleSeries.createPriceLine({ price: p, color, title, lineStyle, lineWidth: 1, axisLabelVisible: true }))
   }
+}
+
+/** Each fill sits on the candle it happened in, so it follows the chosen timeframe. */
+function drawMarkers() {
+  if (!markerPlugin) return
+  const times = props.candles.map((c) => c.open_time)
+  const markers: SeriesMarker<Time>[] = []
+  for (const m of props.markers ?? []) {
+    let index = -1
+    for (let i = times.length - 1; i >= 0; i--) {
+      if (times[i] <= m.time) {
+        index = i
+        break
+      }
+    }
+    if (index < 0) continue
+    markers.push({
+      time: times[index] as UTCTimestamp,
+      position: m.side === 'buy' ? 'belowBar' : 'aboveBar',
+      shape: m.side === 'buy' ? 'arrowUp' : 'arrowDown',
+      color: m.side === 'buy' ? '#3b82f6' : m.tone === 'down' ? '#ef4444' : '#22c55e',
+      text: m.text,
+    })
+  }
+  markers.sort((a, b) => (a.time as number) - (b.time as number))
+  markerPlugin.setMarkers(markers)
 }
 
 /** Canvas colors from the current theme's tokens; re-applied when the theme changes. */
@@ -120,6 +152,7 @@ onMounted(() => {
   chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } })
   ema20Series = chart.addSeries(LineSeries, { color: '#f59e0b', lineWidth: 1, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false })
   ema50Series = chart.addSeries(LineSeries, { color: '#a78bfa', lineWidth: 1, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false })
+  markerPlugin = createSeriesMarkers(candleSeries, [])
 
   render()
 })
@@ -135,6 +168,7 @@ watch(
   },
 )
 watch(() => props.levels, drawLevels)
+watch(() => props.markers, drawMarkers)
 
 // Move the last candle with the live price between candle syncs.
 watch(

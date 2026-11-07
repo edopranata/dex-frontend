@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AccountPortfolio from '@/components/AccountPortfolio.vue'
+import AccountReportPanel from '@/components/AccountReportPanel.vue'
 import AppSelect from '@/components/AppSelect.vue'
 import EquityChart from '@/components/EquityChart.vue'
 import RecommendationBadge from '@/components/RecommendationBadge.vue'
@@ -61,6 +62,7 @@ interface Report {
   recommendations: (Summary & { recommendation: Recommendation })[]
   tokens: (Summary & { symbol: string; slug: string })[]
   accounts: Account[]
+  shadow_exit: { since: string; signals: number; downgraded: number; actual_r: number; shadow_r: number }
 }
 
 const report = ref<Report | null>(null)
@@ -83,8 +85,12 @@ const versionOptions = computed(() => [
 ])
 
 const selectedKey = ref('all')
-const accountTab = ref<'detail' | 'portfolio'>('detail')
-const accountTabs = [{ value: 'detail', label: 'Detail akun' }, { value: 'portfolio', label: 'Portofolio' }] as const
+const accountTab = ref<'summary' | 'lots' | 'portfolio'>('summary')
+const accountTabs = [
+  { value: 'summary', label: 'Ringkasan' },
+  { value: 'lots', label: 'Daftar lot' },
+  { value: 'portfolio', label: 'Portofolio' },
+] as const
 const account = computed(() => report.value?.accounts.find((a) => a.key === selectedKey.value) ?? report.value?.accounts[0] ?? null)
 
 function buyingStatus(a: Account): { label: string; tone?: 'up' | 'down'; hint: string } {
@@ -181,6 +187,21 @@ function week(start: string): string {
         <p v-else class="px-4 pb-4 text-sm text-muted">Belum ada sinyal selesai pada versi ini. Pilih "Semua versi" untuk melihat data lama.</p>
       </section>
 
+      <section class="card p-4">
+        <h2 class="card-title">Catatan bayangan v5: keluar saat rekomendasi turun</h2>
+        <p class="mt-1 text-xs text-muted">
+          Tidak mengubah trading. Untuk tiap sinyal yang entry sejak {{ dateTime(report.shadow_exit.since) }}, dicatat analisa pertama yang tidak lagi Buy/Strong Buy. Hasil bayangan menutup sisa posisi di harga itu,
+          target yang sudah tercapai tetap dihitung, dan biayanya dianggap sama.
+        </p>
+        <dl v-if="report.shadow_exit.signals" class="mt-3 grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
+          <div><dt class="text-xs text-muted">Sinyal terpantau</dt><dd class="num text-lg font-semibold">{{ report.shadow_exit.signals }}</dd></div>
+          <div><dt class="text-xs text-muted">Sempat turun</dt><dd class="num text-lg font-semibold">{{ report.shadow_exit.downgraded }}</dd></div>
+          <div><dt class="text-xs text-muted">R aktual</dt><dd class="num text-lg font-semibold" :class="changeClass(report.shadow_exit.actual_r)">{{ r(report.shadow_exit.actual_r) }}</dd></div>
+          <div><dt class="text-xs text-muted">R bayangan</dt><dd class="num text-lg font-semibold" :class="changeClass(report.shadow_exit.shadow_r)">{{ r(report.shadow_exit.shadow_r) }}</dd></div>
+        </dl>
+        <p v-else class="mt-2 text-sm text-muted">Belum ada sinyal selesai yang entry sejak catatan ini dimulai.</p>
+      </section>
+
       <div v-if="report.summary.trades" class="grid items-start gap-section lg:grid-cols-2">
         <section class="card overflow-x-auto">
           <h2 class="card-title p-4 pb-2">Per rekomendasi</h2>
@@ -234,7 +255,7 @@ function week(start: string): string {
       <section class="card overflow-x-auto">
         <h2 class="card-title p-4 pb-1">Perbandingan akun Auto-follow</h2>
         <p class="px-4 pb-2 text-xs text-muted">
-          Akun simulasi dengan modal dan batas risiko yang sama, masing-masing membeli rekomendasinya sendiri. Win rate dihitung dari sinyal selesai yang benar-benar dibeli akun itu. Tabel ini tidak terpengaruh pilihan versi di atas, dan akun Gabungan masih membawa posisi lama.
+          Akun simulasi dengan modal dan batas risiko yang sama, masing-masing membeli rekomendasinya sendiri. Win rate dihitung dari sinyal selesai yang benar-benar dibeli akun itu. Tabel ini tidak terpengaruh pilihan versi di atas; laporan per akun di bawahnya mengikuti versi. Sejak 7 Nov lot ikut ditutup saat sinyalnya selesai.
         </p>
         <table class="table">
           <thead>
@@ -291,8 +312,10 @@ function week(start: string): string {
 
         <AccountPortfolio v-if="accountTab === 'portfolio'" class="mt-3" :account-key="account.key" />
 
-        <template v-else>
-          <div class="mt-3 grid grid-cols-2 gap-section lg:grid-cols-4">
+        <AccountReportPanel v-else-if="accountTab === 'lots'" class="mt-3" :account-key="account.key" :version="version" view="lots" />
+
+        <AccountReportPanel v-else class="mt-3" :account-key="account.key" :version="version" view="summary">
+          <div class="grid grid-cols-2 gap-section lg:grid-cols-4">
             <div>
               <p class="text-xs text-muted">Ekuitas</p>
               <p class="num text-lg font-semibold">{{ usd(account.equity_usd) }}</p>
@@ -330,7 +353,7 @@ function week(start: string): string {
             <p v-else class="rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted">Kurva terisi tiap 15 menit dan baru tampil setelah ada dua catatan. Riwayat sebelum fitur ini aktif tidak bisa dibuat ulang.</p>
             <p v-if="account.curve.length >= 2" class="mt-2 text-xs text-muted">Garis putus-putus adalah saldo awal. Dicatat sejak {{ dateTime(account.curve_started_at) }}, jadi drawdown sebelum tanggal itu tidak terhitung.</p>
           </div>
-        </template>
+        </AccountReportPanel>
       </section>
     </template>
   </div>

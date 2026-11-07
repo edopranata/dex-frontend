@@ -15,8 +15,8 @@ import TokenAvatar from '@/components/TokenAvatar.vue'
 import WhaleTable from '@/components/WhaleTable.vue'
 import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
-import { changeClass, compact, pct, price, qty, timeAgo, usd } from '@/lib/format'
-import type { Analysis, Candle, NewsItem, Order, Portfolio, Signal, Token, WhaleTrade } from '@/lib/types'
+import { changeClass, compact, dateTime, pct, price, qty, timeAgo, usd } from '@/lib/format'
+import type { Analysis, Candle, ChartMarker, Levels, LotDetail, NewsItem, Order, Portfolio, Signal, Token, WhaleTrade } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
 import { useConfirmStore } from '@/stores/confirm'
 import { usePortfolioStore } from '@/stores/portfolio'
@@ -114,6 +114,52 @@ watch(
   },
 )
 
+/** An auto-follow lot opened from the reports (?lot=ID): its signal's levels and every fill on the chart. */
+const lot = ref<LotDetail | null>(null)
+
+async function loadLot() {
+  const id = route.query.lot
+  if (!id) {
+    lot.value = null
+    return
+  }
+  try {
+    const { data } = await api.get<LotDetail>(`/reports/lots/${id}`)
+    lot.value = data
+  } catch {
+    lot.value = null
+  }
+}
+
+watch(() => route.query.lot, loadLot, { immediate: true })
+
+const lotFills = computed(() => {
+  let target = 0
+  return (lot.value?.fills ?? []).map((f) => {
+    const label = f.side === 'buy' ? 'Beli' : f.type === 'take_profit' ? `TP${++target}` : f.type === 'stop_loss' ? 'SL' : 'Tutup'
+    return { ...f, label, loss: f.side === 'sell' && f.price < (lot.value?.fills[0]?.price ?? 0) }
+  })
+})
+
+const lotLevels = computed<Levels | null>(() => {
+  const l = lot.value
+  if (!l) return null
+  const [tp1, tp2, tp3] = l.signal.take_profits
+  return { entry_low: l.signal.entry_low, entry_high: l.signal.entry_high, stop_loss: l.stop ?? l.signal.stop_loss, take_profit_1: tp1, take_profit_2: tp2, take_profit_3: tp3 }
+})
+
+const lotMarkers = computed<ChartMarker[]>(() =>
+  lotFills.value.filter((f) => f.at).map((f) => ({ time: Math.floor(Date.parse(f.at!) / 1000), side: f.side, text: f.label, tone: f.loss ? 'down' : 'up' })),
+)
+
+const chartLevels = computed(() => lotLevels.value ?? signal.value ?? analysis.value?.levels)
+
+function closeLot() {
+  const query = { ...route.query }
+  delete query.lot
+  router.replace({ query })
+}
+
 const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-warn', cancelled: 'text-muted', rejected: 'text-down' }
 </script>
 
@@ -164,10 +210,24 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
             >
               {{ tf }}
             </button>
-            <span class="ml-auto hidden text-[11px] text-muted sm:inline">Candle: GeckoTerminal · Garis: level sinyal</span>
+            <span class="ml-auto hidden text-[11px] text-muted sm:inline">Candle: GeckoTerminal · Garis: level {{ lot ? 'lot' : 'sinyal' }}</span>
+          </div>
+          <div v-if="lot" class="mb-2 rounded-lg border border-brand/40 bg-brand/10 px-3 py-2 text-xs">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span class="font-medium">Lot #{{ lot.id }} · {{ lot.account?.label }} · sinyal #{{ lot.signal.id }} ({{ lot.signal.version ?? '–' }})</span>
+              <span v-if="lot.stop !== null && lot.stop !== lot.signal.stop_loss" class="text-muted">SL sudah pindah ke harga entry</span>
+              <button type="button" class="ml-auto text-brand hover:underline" @click="closeLot">Kembali ke sinyal aktif</button>
+            </div>
+            <ol class="mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
+              <li v-for="f in lotFills" :key="f.id">
+                <span class="font-medium" :class="f.side === 'buy' ? 'text-brand' : f.loss ? 'text-down' : 'text-up'">{{ f.label }}</span>
+                <span class="text-muted"> {{ dateTime(f.at) }} · </span>
+                <span class="num">{{ price(f.price) }}</span>
+              </li>
+            </ol>
           </div>
           <div class="h-[320px] sm:h-[420px]">
-            <CandleChart v-if="candles.length" :candles="candles" :levels="signal ?? analysis?.levels" :live-price="token.price_usd" />
+            <CandleChart v-if="candles.length" :candles="candles" :levels="chartLevels" :markers="lotMarkers" :live-price="token.price_usd" />
             <EmptyState v-else title="Data candle belum tersedia" description="Candle diambil dari GeckoTerminal setiap 10 menit. Token baru butuh 1–3 menit." />
           </div>
         </section>

@@ -62,7 +62,7 @@ interface Report {
   recommendations: (Summary & { recommendation: Recommendation })[]
   tokens: (Summary & { symbol: string; slug: string })[]
   accounts: Account[]
-  shadow_exit: { since: string; signals: number; downgraded: number; actual_r: number; shadow_r: number }
+  shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number }[]
 }
 
 const report = ref<Report | null>(null)
@@ -187,19 +187,37 @@ function week(start: string): string {
         <p v-else class="px-4 pb-4 text-sm text-muted">Belum ada sinyal selesai pada versi ini. Pilih "Semua versi" untuk melihat data lama.</p>
       </section>
 
-      <section class="card p-4">
-        <h2 class="card-title">Catatan bayangan v5: keluar saat rekomendasi turun</h2>
-        <p class="mt-1 text-xs text-muted">
-          Tidak mengubah trading. Untuk tiap sinyal yang entry sejak {{ dateTime(report.shadow_exit.since) }}, dicatat analisa pertama yang tidak lagi Buy/Strong Buy. Hasil bayangan menutup sisa posisi di harga itu,
-          target yang sudah tercapai tetap dihitung, dan biayanya dianggap sama.
+      <section class="card overflow-x-auto">
+        <h2 class="card-title p-4 pb-1">Catatan bayangan: calon aturan v5</h2>
+        <p class="px-4 pb-2 text-xs text-muted">
+          Tidak mengubah trading. Tiap baris menghitung ulang sinyal yang sudah selesai seandainya aturannya berlaku: keluar di harga analisa itu dengan target yang sudah tercapai tetap dihitung,
+          atau 0R untuk sinyal yang tidak akan dibuka. Biaya dianggap sama. Hanya sinyal yang entry setelah datanya mulai dicatat yang dihitung, jadi sampelnya masih kecil.
         </p>
-        <dl v-if="report.shadow_exit.signals" class="mt-3 grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
-          <div><dt class="text-xs text-muted">Sinyal terpantau</dt><dd class="num text-lg font-semibold">{{ report.shadow_exit.signals }}</dd></div>
-          <div><dt class="text-xs text-muted">Sempat turun</dt><dd class="num text-lg font-semibold">{{ report.shadow_exit.downgraded }}</dd></div>
-          <div><dt class="text-xs text-muted">R aktual</dt><dd class="num text-lg font-semibold" :class="changeClass(report.shadow_exit.actual_r)">{{ r(report.shadow_exit.actual_r) }}</dd></div>
-          <div><dt class="text-xs text-muted">R bayangan</dt><dd class="num text-lg font-semibold" :class="changeClass(report.shadow_exit.shadow_r)">{{ r(report.shadow_exit.shadow_r) }}</dd></div>
-        </dl>
-        <p v-else class="mt-2 text-sm text-muted">Belum ada sinyal selesai yang entry sejak catatan ini dimulai.</p>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Aturan</th>
+              <th class="text-right">Sinyal</th>
+              <th class="text-right">Kena aturan</th>
+              <th class="text-right">R aktual</th>
+              <th class="text-right">R bayangan</th>
+              <th class="text-right">Selisih</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="v in report.shadow_exit" :key="v.key">
+              <td>
+                {{ v.label }}
+                <span class="block text-[11px] text-muted">Entry sejak {{ dateTime(v.since) }}</span>
+              </td>
+              <td class="num text-right">{{ v.signals }}</td>
+              <td class="num text-right">{{ v.affected }}</td>
+              <td class="num text-right" :class="changeClass(v.actual_r)">{{ r(v.actual_r) }}</td>
+              <td class="num text-right" :class="changeClass(v.shadow_r)">{{ r(v.shadow_r) }}</td>
+              <td class="num text-right" :class="changeClass(v.shadow_r - v.actual_r)">{{ v.signals ? r(v.shadow_r - v.actual_r) : '–' }}</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
       <div v-if="report.summary.trades" class="grid items-start gap-section lg:grid-cols-2">

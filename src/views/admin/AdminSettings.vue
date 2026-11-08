@@ -29,6 +29,7 @@ interface AiProviderStatus {
   provider: string
   label: string
   role: 'primary' | 'fallback'
+  position: number
   model: string | null
   paused_until: string | null
   reason: string | null
@@ -236,7 +237,7 @@ function display(value: unknown): string {
           <span class="flex items-center gap-1.5">
             <span class="h-2 w-2 rounded-full" :class="p.paused_until ? 'bg-amber-400' : 'bg-up'" />
             <span class="font-medium">{{ p.label }}</span>
-            <span class="badge-mini" :class="p.role === 'primary' ? 'bg-brand/15 text-brand' : 'bg-panel text-muted ring-1 ring-line'">{{ p.role === 'primary' ? 'Utama' : 'Cadangan' }}</span>
+            <span class="badge-mini" :class="p.role === 'primary' ? 'bg-brand/15 text-brand' : 'bg-panel text-muted ring-1 ring-line'">{{ p.role === 'primary' ? 'Utama' : `Cadangan ${p.position}` }}</span>
             <span class="text-muted">{{ p.paused_until ? `dijeda sampai ${when(p.paused_until)}` : 'aktif' }}</span>
           </span>
           <span class="num text-muted">{{ p.model }}</span>

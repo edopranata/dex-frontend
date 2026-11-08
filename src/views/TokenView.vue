@@ -314,7 +314,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
         </div>
 
         <AnalysisCard :analysis="analysis" :signal="signal" :current-price="token.price_usd" :symbol="token.symbol" @followed="afterTrade" />
-        <SecurityCard :security="token.latest_security" />
+        <SecurityCard :security="token.latest_security" :chain="token.chain_id" />
       </div>
     </div>
   </div>

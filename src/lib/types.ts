@@ -52,10 +52,24 @@ export interface Profile {
   notifications: NotificationSettings
 }
 
+export interface TopHolder {
+  address: string
+  percent: number
+  is_locked: boolean
+  is_contract: boolean | null
+  is_pool: boolean
+  is_burn: boolean
+  tag: string | null
+}
+
 export interface SecurityCheck {
   risk_score: number
   holder_count: number | null
   top10_percent: number | null
+  top_holders: TopHolder[] | null
+  top1_percent: number | null
+  creator_percent: number | null
+  owner_percent: number | null
   lp_locked_percent: number | null
   is_honeypot: boolean | null
   buy_tax: number | null

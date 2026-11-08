@@ -1,8 +1,32 @@
 <script setup lang="ts">
-import { compact, timeAgo } from '@/lib/format'
-import type { SecurityCheck } from '@/lib/types'
+import { computed, ref } from 'vue'
+import { compact, explorerUrl, shortAddress, timeAgo } from '@/lib/format'
+import type { SecurityCheck, TopHolder } from '@/lib/types'
 
-defineProps<{ security: SecurityCheck | null | undefined }>()
+const props = defineProps<{ security: SecurityCheck | null | undefined; chain?: string }>()
+
+const showHolders = ref(false)
+
+/** One wallet that can sell this much can take most of the liquidity out at any moment. */
+const dominance = computed(() => {
+  const top = props.security?.top1_percent
+  if (top === null || top === undefined) return null
+  if (top >= 60) return { label: 'Holder dominan', tone: 'bg-down/15 text-down', hint: 'Satu dompet memegang lebih dari 60% supply dan bisa menjual seluruhnya kapan saja.' }
+  if (top >= 30) return { label: 'Waspada', tone: 'bg-warn/15 text-warn', hint: 'Satu dompet memegang lebih dari 30% supply.' }
+  return null
+})
+
+function kind(holder: TopHolder): string | null {
+  if (holder.is_burn) return 'Burn'
+  if (holder.is_pool) return 'Pool'
+  if (holder.is_locked) return holder.tag ? `Terkunci · ${holder.tag}` : 'Terkunci'
+  if (holder.is_contract) return 'Kontrak'
+  return holder.tag
+}
+
+function percent(value: number): string {
+  return value.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+}
 </script>
 
 <template>
@@ -34,7 +58,40 @@ defineProps<{ security: SecurityCheck | null | undefined }>()
           <dt class="text-muted">Pajak beli/jual</dt>
           <dd class="num mt-0.5 font-medium">{{ security.buy_tax ?? '–' }}% / {{ security.sell_tax ?? '–' }}%</dd>
         </div>
+        <div class="col-span-2 rounded bg-panel-2 p-2">
+          <dt class="text-muted">Holder terbesar yang bisa menjual</dt>
+          <dd class="mt-0.5 flex flex-wrap items-center gap-2">
+            <span class="num font-medium">{{ security.top1_percent === null ? '–' : `${percent(security.top1_percent)}%` }}</span>
+            <span v-if="dominance" class="rounded px-1.5 py-0.5 text-[11px] font-semibold" :class="dominance.tone" :title="dominance.hint">{{ dominance.label }}</span>
+            <span v-if="security.creator_percent !== null" class="text-[11px] text-muted">Creator {{ percent(security.creator_percent) }}% · owner {{ percent(security.owner_percent ?? 0) }}%</span>
+          </dd>
+          <p v-if="dominance" class="mt-1 text-[11px] text-muted">{{ dominance.hint }}</p>
+        </div>
       </dl>
+
+      <div v-if="security.top_holders?.length" class="mt-3">
+        <button type="button" class="text-xs text-brand hover:underline" :aria-expanded="showHolders" @click="showHolders = !showHolders">
+          {{ showHolders ? 'Sembunyikan' : 'Lihat' }} 10 holder teratas
+        </button>
+        <ol v-if="showHolders" class="mt-2 space-y-1 text-xs">
+          <li v-for="(h, i) in security.top_holders" :key="h.address" class="flex items-center gap-2">
+            <span class="num w-4 text-right text-muted">{{ i + 1 }}</span>
+            <a
+              v-if="chain && explorerUrl(chain, 'address', h.address)"
+              :href="explorerUrl(chain, 'address', h.address)!"
+              target="_blank"
+              rel="noopener"
+              class="num hover:text-brand"
+              :title="h.address"
+              >{{ shortAddress(h.address) }}</a
+            >
+            <span v-else class="num" :title="h.address">{{ shortAddress(h.address) }}</span>
+            <span v-if="kind(h)" class="rounded bg-panel px-1 text-[10px] text-muted ring-1 ring-line">{{ kind(h) }}</span>
+            <span class="num ml-auto font-medium">{{ percent(h.percent) }}%</span>
+          </li>
+        </ol>
+        <p v-if="showHolders && chain === 'solana'" class="mt-1 text-[11px] text-muted">Di Solana, dompet bursa dan vault pool belum bisa dikenali, jadi bisa terlihat sebagai holder biasa.</p>
+      </div>
 
       <ul v-if="security.flags.length" class="mt-3 space-y-1.5 text-xs">
         <li v-for="(flag, i) in security.flags" :key="i" class="flex gap-2">

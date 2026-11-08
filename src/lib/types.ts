@@ -344,6 +344,8 @@ export interface AccountReportData {
     cancelled: number
     skipped: number
     skipped_by_reason: Record<string, number>
+    awaiting_entry: number
+    never_entered: number
     unknown: number
     open_lots: number
     closed_lots: number

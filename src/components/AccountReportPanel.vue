@@ -74,6 +74,8 @@ const funnelRows = computed(() => {
         .join(' · '),
     },
   ]
+  if (f.awaiting_entry) rows.push({ label: 'Menunggu entry', value: f.awaiting_entry, hint: 'Akun membeli saat sinyal masuk zona entry' })
+  if (f.never_entered) rows.push({ label: 'Tidak pernah entry', value: f.never_entered, hint: 'Sinyal ditutup sebelum harga masuk zona, jadi tidak dibeli' })
   if (f.unknown) rows.push({ label: 'Tanpa catatan', value: f.unknown, hint: 'Sebelum keputusan dicatat dan tidak ada di log' })
   rows.push({ label: 'Lot selesai', value: f.closed_lots, hint: `${f.open_lots} masih terbuka` })
   rows.push({ label: 'Lot untung', value: f.winning_lots, tone: 'text-up' })

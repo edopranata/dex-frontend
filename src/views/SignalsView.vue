@@ -59,6 +59,15 @@ const statusLabel: Record<string, [string, string]> = {
   invalidated: ['Batal (SL sebelum entry)', 'text-muted'],
   expired: ['Kedaluwarsa', 'text-muted'],
 }
+
+/** Take profit before the third target means the stop at the entry closed the rest, sometimes below it. */
+function statusOf(s: Signal): [string, string] {
+  if (s.status === 'take_profit' && s.max_tp_hit < 3) {
+    return [`TP${s.max_tp_hit}, lalu stop di entry`, (s.net_r ?? 0) > 0 ? 'text-up' : 'text-muted']
+  }
+  const [label, tone] = statusLabel[s.status]
+  return [s.max_tp_hit ? `${label} · TP${s.max_tp_hit}` : label, tone]
+}
 </script>
 
 <template>
@@ -145,9 +154,7 @@ const statusLabel: Record<string, [string, string]> = {
             <td class="num text-right text-xs text-down">{{ price(s.stop_loss) }}</td>
             <td class="num text-right text-xs text-up">{{ price(s.take_profit_1) }} / {{ price(s.take_profit_2) }} / {{ price(s.take_profit_3) }}</td>
             <td class="num text-right text-xs">{{ price(s.entry_price) }} → {{ price(s.exit_price) }}</td>
-            <td class="text-xs whitespace-nowrap" :class="statusLabel[s.status][1]">
-              {{ statusLabel[s.status][0] }}<span v-if="s.max_tp_hit"> · TP{{ s.max_tp_hit }}</span>
-            </td>
+            <td class="text-xs whitespace-nowrap" :class="statusOf(s)[1]">{{ statusOf(s)[0] }}</td>
             <td
               class="num text-right font-semibold"
               :class="(s.net_r ?? 0) > 0 ? 'text-up' : (s.net_r ?? 0) < 0 ? 'text-down' : 'text-muted'"

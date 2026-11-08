@@ -32,6 +32,9 @@ const analysis = ref<Analysis | null>(null)
 const signal = ref<Signal | null>(null)
 const whaleThreshold = ref<number>(0)
 const candles = ref<Candle[]>([])
+/** Which token (counted on each real token change) and timeframe the candles belong to. */
+const candlesKey = ref('')
+let tokenSerial = 0
 const timeframe = ref<'15m' | '1h' | '4h' | '1d'>('1h')
 const whales = ref<WhaleTrade[]>([])
 const news = ref<NewsItem[]>([])
@@ -66,7 +69,10 @@ async function fetchToken() {
 }
 
 async function loadCandles() {
+  const key = `${tokenSerial}:${timeframe.value}`
   const { data } = await api.get<{ data: Candle[] }>(`/tokens/${props.id}/candles`, { params: { timeframe: timeframe.value } })
+  // Set together, so the chart knows a new token or timeframe from a refresh of the same one.
+  candlesKey.value = key
   candles.value = data.data
 }
 
@@ -108,6 +114,7 @@ watch(
   () => {
     // Swapping an old id link for the slug is the same token: nothing to reload.
     if (isCurrent(token.value)) return
+    tokenSerial++
     loadToken()
     loadCandles()
     loadActivity()
@@ -227,7 +234,7 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
             </ol>
           </div>
           <div class="h-[320px] sm:h-[420px]">
-            <CandleChart v-if="candles.length" :candles="candles" :levels="chartLevels" :markers="lotMarkers" :live-price="token.price_usd" />
+            <CandleChart v-if="candles.length" :candles="candles" :series-key="candlesKey" :levels="chartLevels" :markers="lotMarkers" :live-price="token.price_usd" />
             <EmptyState v-else title="Data candle belum tersedia" description="Candle diambil dari GeckoTerminal setiap 10 menit. Token baru butuh 1–3 menit." />
           </div>
         </section>

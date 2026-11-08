@@ -23,7 +23,11 @@ import { themeColor, useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
 
-const props = defineProps<{ candles: Candle[]; levels?: Levels | null; livePrice?: number | null; markers?: ChartMarker[] }>()
+/**
+ * seriesKey names what the candles are (token and timeframe). A new key draws the chart afresh and fits it;
+ * a refresh of the same series only updates the latest candles, so the user's zoom and scroll stay.
+ */
+const props = defineProps<{ candles: Candle[]; seriesKey?: string; levels?: Levels | null; livePrice?: number | null; markers?: ChartMarker[] }>()
 
 const container = ref<HTMLDivElement>()
 let chart: IChartApi | undefined
@@ -34,6 +38,8 @@ let ema50Series: ISeriesApi<'Line'> | undefined
 let priceLines: IPriceLine[] = []
 let markerPlugin: ISeriesMarkersPluginApi<Time> | undefined
 let lastCandle: Candle | undefined
+let renderedKey: string | undefined
+let levelsKey = ''
 
 function ema(values: number[], period: number): (number | null)[] {
   const result: (number | null)[] = values.map(() => null)
@@ -54,6 +60,45 @@ function minMove(sample: number): number {
   return Number((10 ** -decimals).toFixed(decimals))
 }
 
+function bar(c: Candle) {
+  return { time: c.open_time as UTCTimestamp, open: c.open, high: c.high, low: c.low, close: c.close }
+}
+
+function volumeBar(c: Candle) {
+  return { time: c.open_time as UTCTimestamp, value: c.volume, color: c.close >= c.open ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)' }
+}
+
+/**
+ * A refresh of the same token and timeframe: update the candles from the last one drawn onwards. Unlike
+ * setData and fitContent, this keeps the zoom (both axes) and scroll the user chose.
+ */
+function refresh() {
+  const candles = props.candles
+  const from = lastCandle?.open_time
+  const newest = candles.at(-1)
+
+  if (!candleSeries || !volumeSeries || !ema20Series || !ema50Series || from === undefined || !newest || newest.open_time < from || props.seriesKey !== renderedKey) {
+    render()
+
+    return
+  }
+
+  const closes = candles.map((c) => c.close)
+  const ema20 = ema(closes, 20)
+  const ema50 = ema(closes, 50)
+
+  candles.forEach((c, i) => {
+    if (c.open_time < from) return
+    candleSeries!.update(bar(c))
+    volumeSeries!.update(volumeBar(c))
+    if (ema20[i] !== null) ema20Series!.update({ time: c.open_time as UTCTimestamp, value: ema20[i]! })
+    if (ema50[i] !== null) ema50Series!.update({ time: c.open_time as UTCTimestamp, value: ema50[i]! })
+  })
+
+  lastCandle = { ...newest }
+  drawMarkers()
+}
+
 function render() {
   if (!chart || !candleSeries || !volumeSeries || !ema20Series || !ema50Series) return
 
@@ -64,10 +109,8 @@ function render() {
   ema20Series.applyOptions({ priceFormat })
   ema50Series.applyOptions({ priceFormat })
 
-  candleSeries.setData(candles.map((c) => ({ time: c.open_time as UTCTimestamp, open: c.open, high: c.high, low: c.low, close: c.close })))
-  volumeSeries.setData(
-    candles.map((c) => ({ time: c.open_time as UTCTimestamp, value: c.volume, color: c.close >= c.open ? 'rgba(34,197,94,0.35)' : 'rgba(239,68,68,0.35)' })),
-  )
+  candleSeries.setData(candles.map(bar))
+  volumeSeries.setData(candles.map(volumeBar))
 
   const closes = candles.map((c) => c.close)
   const toLine = (series: (number | null)[]) =>
@@ -76,16 +119,24 @@ function render() {
   ema50Series.setData(toLine(ema(closes, 50)))
 
   lastCandle = candles.at(-1) ? { ...candles.at(-1)! } : undefined
+  renderedKey = props.seriesKey
+  levelsKey = ''
   drawLevels()
   drawMarkers()
   chart.timeScale().fitContent()
+  // A new series starts with the price axis following the candles again.
+  candleSeries.priceScale().setAutoScale(true)
 }
 
 function drawLevels() {
   if (!candleSeries) return
+  const levels = props.levels
+  // The token reloads every few seconds with the same levels: redraw only when they change.
+  const key = levels ? [levels.entry_high, levels.entry_low, levels.stop_loss, levels.take_profit_1, levels.take_profit_2, levels.take_profit_3].join('|') : ''
+  if (key === levelsKey) return
+  levelsKey = key
   priceLines.forEach((line) => candleSeries!.removePriceLine(line))
   priceLines = []
-  const levels = props.levels
   if (!levels) return
 
   const lines: [number, string, string, LineStyle][] = [
@@ -159,7 +210,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => chart?.remove())
 
-watch(() => props.candles, render)
+watch(() => props.candles, refresh)
 watch(
   () => theme.resolved,
   () => {

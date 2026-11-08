@@ -47,6 +47,7 @@ interface Account {
   curve_started_at: string | null
   curve: { t: number; equity: number }[]
   limits: { max_open_positions: number; risk_pct: number; max_daily_loss_pct: number }
+  chains: string[] | null
   realized_today: number
   daily_loss_reached: boolean
   has_room: boolean
@@ -61,6 +62,7 @@ interface Report {
   weeks: (Summary & { week_start: string; cumulative_r: number })[]
   recommendations: (Summary & { recommendation: Recommendation })[]
   tokens: (Summary & { symbol: string; slug: string })[]
+  chains: (Summary & { chain: string; label: string; by_recommendation: Partial<Record<Recommendation, Summary>> })[]
   accounts: Account[]
   shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number }[]
 }
@@ -270,10 +272,46 @@ function week(start: string): string {
         </section>
       </div>
 
+      <section v-if="report.chains.length" class="card overflow-x-auto">
+        <h2 class="card-title p-4 pb-1">Per jaringan</h2>
+        <p class="px-4 pb-2 text-xs text-muted">Hasil sinyal per jaringan token, untuk memilih wallet jaringan mana yang dipakai nanti. Belum termasuk gas; akun Auto-follow per jaringan di bawah sudah menghitungnya.</p>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Jaringan</th>
+              <th class="text-right">Sinyal</th>
+              <th class="text-right">Win rate</th>
+              <th class="text-right">Rata-rata</th>
+              <th class="text-right">Total R</th>
+              <th class="text-right">PF</th>
+              <th class="text-right">Strong Buy</th>
+              <th class="text-right">Buy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in report.chains" :key="c.chain">
+              <td class="font-medium whitespace-nowrap">{{ c.label }}</td>
+              <td class="num text-right">{{ c.trades }}</td>
+              <td class="num text-right">{{ percent(c.win_rate) }}</td>
+              <td class="num text-right" :class="changeClass(c.avg_r)">{{ r(c.avg_r) }}</td>
+              <td class="num text-right" :class="changeClass(c.total_r)">{{ r(c.total_r) }}</td>
+              <td class="num text-right">{{ factor(c.profit_factor) }}</td>
+              <td v-for="rec in ['STRONG_BUY', 'BUY'] as const" :key="rec" class="num text-right whitespace-nowrap">
+                <template v-if="c.by_recommendation[rec]">
+                  <span :class="changeClass(c.by_recommendation[rec]!.avg_r)">{{ r(c.by_recommendation[rec]!.avg_r) }}</span>
+                  <span class="block text-[11px] text-muted">{{ c.by_recommendation[rec]!.trades }} sinyal</span>
+                </template>
+                <span v-else class="text-muted">–</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
       <section class="card overflow-x-auto">
         <h2 class="card-title p-4 pb-1">Perbandingan akun Auto-follow</h2>
         <p class="px-4 pb-2 text-xs text-muted">
-          Akun simulasi dengan modal dan batas risiko yang sama, masing-masing membeli rekomendasinya sendiri. Win rate dihitung dari sinyal selesai yang benar-benar dibeli akun itu. Tabel ini tidak terpengaruh pilihan versi di atas; laporan per akun di bawahnya mengikuti versi. Sejak 7 Nov lot ikut ditutup saat sinyalnya selesai.
+          Akun simulasi dengan modal dan batas risiko yang sama, masing-masing membeli rekomendasinya sendiri. Win rate dihitung dari sinyal selesai yang benar-benar dibeli akun itu. Akun per jaringan (Solana, BNB Chain, Ethereum) hanya membeli token di jaringannya dan membayar gas jaringan itu di tiap swap. Tabel ini tidak terpengaruh pilihan versi di atas; laporan per akun di bawahnya mengikuti versi. Sejak 7 Nov lot ikut ditutup saat sinyalnya selesai.
         </p>
         <table class="table">
           <thead>
@@ -292,7 +330,7 @@ function week(start: string): string {
             <tr v-for="a in report.accounts" :key="a.key" :class="{ 'bg-brand/10': a.key === account?.key }">
               <td class="whitespace-nowrap">
                 <button type="button" class="font-medium hover:text-brand" :aria-pressed="a.key === account?.key" @click="selectedKey = a.key">{{ a.label }}</button>
-                <span class="block text-[11px] text-muted">Sejak {{ a.started_at ? dateTime(a.started_at) : '–' }}</span>
+                <span class="block text-[11px] text-muted">{{ a.chains ? 'Per jaringan · ' : '' }}Sejak {{ a.started_at ? dateTime(a.started_at) : '–' }}</span>
               </td>
               <td class="num text-right">{{ a.closed_signals }}</td>
               <td class="num text-right">{{ percent(a.win_rate) }}</td>

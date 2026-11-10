@@ -2,17 +2,17 @@
 import { ref, watch } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import OrderKind from '@/components/OrderKind.vue'
+import PositionCard from '@/components/PositionCard.vue'
 import Skeleton from '@/components/Skeleton.vue'
-import TokenAvatar from '@/components/TokenAvatar.vue'
 import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
-import { changeClass, dateTime, pct, price, qty, usd } from '@/lib/format'
+import { changeClass, dateTime, price, usd } from '@/lib/format'
 import { tokenPath } from '@/lib/links'
 import { orderStatusClass, orderStatusLabel, targetLabel } from '@/lib/orders'
-import type { Order, Paginated, Position } from '@/lib/types'
+import type { Order, Paginated, PositionCardData } from '@/lib/types'
 
 interface AccountPortfolio {
-  positions: Position[]
+  positions: PositionCardData[]
   pending: Order[]
   orders: Paginated<Order>
 }
@@ -37,7 +37,8 @@ async function load() {
   }
 }
 
-usePolling(load, 60000)
+// Each card shows where the price sits now; prices refresh every 15 seconds.
+usePolling(load, 15000)
 watch(page, load)
 watch(
   () => props.accountKey,
@@ -52,39 +53,14 @@ watch(
 
 <template>
   <div class="space-y-5">
-    <p v-if="failed && !portfolio" class="rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted">Portofolio akun gagal dimuat. Dicoba lagi otomatis dalam satu menit.</p>
+    <p v-if="failed && !portfolio" class="rounded-lg border border-dashed border-line p-6 text-center text-sm text-muted">Portofolio akun gagal dimuat. Dicoba lagi otomatis.</p>
     <Skeleton v-else-if="!portfolio" class="p-3" :rows="5" />
 
     <template v-else>
       <div>
         <h3 class="mb-1 text-sm font-medium">Posisi terbuka ({{ portfolio.positions.length }})</h3>
-        <div v-if="portfolio.positions.length" class="overflow-x-auto">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Token</th>
-                <th class="text-right!">Jumlah</th>
-                <th class="text-right!">Harga rata-rata</th>
-                <th class="text-right!">Harga sekarang</th>
-                <th class="text-right!">Nilai</th>
-                <th class="text-right!">P&amp;L</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in portfolio.positions" :key="p.id" class="cursor-pointer hover:bg-panel-2/50" @click="$router.push(tokenPath(p.token))">
-                <td>
-                  <div class="flex items-center gap-2">
-                    <TokenAvatar :src="p.token.image_url" :symbol="p.token.symbol" :size="22" />{{ p.token.symbol }}
-                  </div>
-                </td>
-                <td class="num text-right">{{ qty(p.quantity) }}</td>
-                <td class="num text-right">{{ price(p.avg_price) }}</td>
-                <td class="num text-right">{{ price(p.current_price) }}</td>
-                <td class="num text-right">{{ usd(p.value_usd) }}</td>
-                <td class="num text-right whitespace-nowrap" :class="changeClass(p.unrealized_pnl)">{{ usd(p.unrealized_pnl) }} ({{ pct(p.unrealized_pnl_pct) }})</td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-if="portfolio.positions.length" class="grid gap-section md:grid-cols-2 2xl:grid-cols-3">
+          <PositionCard v-for="p in portfolio.positions" :key="p.id" :card="p" link-lots />
         </div>
         <EmptyState v-else title="Belum ada posisi" description="Akun ini sedang tidak memegang token." />
       </div>

@@ -207,6 +207,56 @@ export interface Position {
   token: Token
 }
 
+export interface PositionTarget {
+  label: string
+  price: number
+  filled: boolean
+  filled_at: string | null
+  filled_price: number | null
+}
+
+/** The open trade's exits: the stop as it is now and as placed, and each target with what already filled. */
+export interface PositionPlan {
+  opened_at: string | null
+  signal_id: number | null
+  /** The signal buy, for auto-follow lots on the token chart. */
+  lot_id: number | null
+  entry: number
+  stop: number | null
+  stop_original: number | null
+  stop_breakeven: boolean
+  targets: PositionTarget[]
+}
+
+export interface TradeExit {
+  label: string
+  type: OrderType
+  at: string | null
+  price: number | null
+  pnl: number | null
+}
+
+/** An earlier trade in the same token, from the first buy until the position was empty again. */
+export interface PastTrade {
+  id: number
+  opened_at: string | null
+  closed_at: string | null
+  signal_id: number | null
+  lot_id: number | null
+  buys: number
+  entry: number | null
+  invested_usd: number
+  pnl: number
+  pnl_pct: number | null
+  exits: TradeExit[]
+}
+
+export interface PositionCardData extends Position {
+  plan: PositionPlan
+  history: PastTrade[]
+  history_total: number
+}
+
 export interface Portfolio {
   balance_usd: number
   holdings_value_usd: number
@@ -218,7 +268,7 @@ export interface Portfolio {
   realized_pnl: number
   fees_paid: number
   trades: number
-  positions: Position[]
+  positions: PositionCardData[]
 }
 
 export interface WhaleTrade {

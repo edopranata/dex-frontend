@@ -11,6 +11,8 @@ export interface FeedEvent {
   tone: 'up' | 'down' | 'warn' | 'info'
   title: string
   body: string
+  /** When it happened; a notice can show up a while after the fact. */
+  at: string | null
   token: { slug: string; symbol: string; image_url: string | null }
 }
 

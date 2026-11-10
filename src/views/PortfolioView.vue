@@ -5,12 +5,12 @@ import AppDatePicker from '@/components/AppDatePicker.vue'
 import AppSelect, { type SelectOption } from '@/components/AppSelect.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import OrderKind from '@/components/OrderKind.vue'
+import PositionCard from '@/components/PositionCard.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import StatCard from '@/components/StatCard.vue'
-import TokenAvatar from '@/components/TokenAvatar.vue'
 import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
-import { changeClass, dateTime, pct, price, qty, usd } from '@/lib/format'
+import { changeClass, dateTime, pct, price, usd } from '@/lib/format'
 import { tokenPath } from '@/lib/links'
 import { orderStatusClass, orderStatusLabel, targetLabel } from '@/lib/orders'
 import type { Order, OrderHistorySummary, OrderStatus, OrderType, Paginated, Portfolio, Side, Token } from '@/lib/types'
@@ -27,6 +27,7 @@ const summary = ref<OrderHistorySummary | null>(null)
 const meta = ref<Paginated<Order>['meta'] | null>(null)
 const tokens = ref<Token[]>([])
 const page = ref(1)
+const historySection = ref<HTMLElement | null>(null)
 
 interface OrderFilters {
   scope: '' | 'open_positions'
@@ -100,6 +101,12 @@ watch(
   { deep: true },
 )
 watch(page, loadOrders)
+
+/** "Semua order" on a card: the history below, filtered to that token. */
+function showTokenOrders(tokenId: number) {
+  Object.assign(filters, { ...emptyFilters, token_id: tokenId })
+  historySection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 function resetFilters() {
   Object.assign(filters, emptyFilters)
@@ -205,39 +212,16 @@ async function reset() {
       <StatCard :loading="!portfolio" label="Fee dibayar" :amount="portfolio?.fees_paid" :format="usd" :hint="`${portfolio?.trades ?? 0} transaksi`" style="animation-delay: 180ms" />
     </div>
 
-    <section class="card overflow-x-auto">
-      <h2 class="card-title p-4 pb-2">Posisi terbuka</h2>
-      <Skeleton v-if="!portfolio" class="p-3" :rows="3" />
-      <table v-else-if="portfolio.positions.length" class="table">
-        <thead>
-          <tr>
-            <th>Token</th>
-            <th class="text-right!">Jumlah</th>
-            <th class="text-right!">Harga rata-rata</th>
-            <th class="text-right!">Harga sekarang</th>
-            <th class="text-right!">Nilai</th>
-            <th class="text-right!">P&L</th>
-          </tr>
-        </thead>
-        <TransitionGroup tag="tbody" name="row">
-          <tr v-for="p in portfolio.positions" :key="p.id" class="cursor-pointer hover:bg-panel-2/50" @click="$router.push(tokenPath(p.token))">
-            <td>
-              <div class="flex items-center gap-2">
-                <TokenAvatar :src="p.token.image_url" :symbol="p.token.symbol" :size="22" />{{ p.token.symbol }}
-              </div>
-            </td>
-            <td class="num text-right">{{ qty(p.quantity) }}</td>
-            <td class="num text-right">{{ price(p.avg_price) }}</td>
-            <td class="num text-right">{{ price(p.current_price) }}</td>
-            <td class="num text-right">{{ usd(p.value_usd) }}</td>
-            <td class="num text-right" :class="changeClass(p.unrealized_pnl)">{{ usd(p.unrealized_pnl) }} ({{ pct(p.unrealized_pnl_pct) }})</td>
-          </tr>
-        </TransitionGroup>
-      </table>
-      <EmptyState v-else title="Belum ada posisi" description="Buka halaman Market, pilih token, lalu beli atau ikuti sinyal." />
+    <section>
+      <h2 class="card-title mb-2">Posisi terbuka<span v-if="portfolio" class="ml-1.5 text-muted">({{ portfolio.positions.length }})</span></h2>
+      <Skeleton v-if="!portfolio" class="card p-3" :rows="3" />
+      <TransitionGroup v-else-if="portfolio.positions.length" tag="div" name="row" class="grid gap-section md:grid-cols-2 2xl:grid-cols-3">
+        <PositionCard v-for="p in portfolio.positions" :key="p.id" :card="p" can-show-orders @show-orders="showTokenOrders" />
+      </TransitionGroup>
+      <EmptyState v-else class="card" title="Belum ada posisi" description="Buka halaman Market, pilih token, lalu beli atau ikuti sinyal." />
     </section>
 
-    <section class="card">
+    <section ref="historySection" class="card scroll-mt-24">
       <div class="flex flex-wrap items-center gap-x-4 gap-y-2 p-4 pb-3">
         <h2 class="card-title">Riwayat order</h2>
         <div class="inline-flex rounded-lg border border-line bg-panel-2/60 p-0.5 text-xs" role="group" aria-label="Cakupan">

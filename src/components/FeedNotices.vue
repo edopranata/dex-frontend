@@ -52,6 +52,13 @@ function open(notice: FeedEvent) {
   router.push(tokenPath(notice.token))
 }
 
+/** Time of day, with the date when it was not today. */
+function happenedAt(iso: string): string {
+  const date = new Date(iso)
+  const time = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+  return date.toDateString() === new Date().toDateString() ? `pukul ${time}` : `${date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} ${time}`
+}
+
 watch(visible, schedule, { immediate: true })
 onBeforeUnmount(pause)
 </script>
@@ -75,6 +82,7 @@ onBeforeUnmount(pause)
           <span class="min-w-0">
             <span class="block text-sm font-medium">{{ notice.title }}</span>
             <span class="mt-0.5 block text-xs text-muted">{{ notice.body }}</span>
+            <time v-if="notice.at" :datetime="notice.at" class="mt-0.5 block text-[11px] text-muted/80">{{ happenedAt(notice.at) }}</time>
           </span>
         </button>
         <button type="button" class="shrink-0 p-2.5 text-muted transition hover:text-text" aria-label="Tutup notifikasi" @click="feed.dismiss(notice.id)">✕</button>

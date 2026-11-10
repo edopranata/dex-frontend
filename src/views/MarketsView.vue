@@ -33,13 +33,15 @@ const chains = ref<{ id: string; label: string }[]>([])
 const showAdd = ref(false)
 const search = ref('')
 const filter = ref<Filter>('all')
-const sortKey = ref<'liquidity_usd' | 'volume_h24' | 'change' | 'score' | 'added'>('score')
+const sortKey = ref<'liquidity_usd' | 'volume_h24' | 'change' | 'score' | 'added' | 'whale_buy' | 'whale_trades'>('score')
 const sortOptions: SelectOption<typeof sortKey.value>[] = [
   { value: 'score', label: 'Urut: skor analisis' },
   { value: 'added', label: 'Urut: terbaru masuk' },
   { value: 'liquidity_usd', label: 'Urut: likuiditas' },
   { value: 'volume_h24', label: 'Urut: volume 24j' },
   { value: 'change', label: 'Urut: perubahan 24j' },
+  { value: 'whale_buy', label: 'Urut: whale beli 24j' },
+  { value: 'whale_trades', label: 'Urut: jumlah whale 24j' },
 ]
 const pinning = ref<number | null>(null)
 
@@ -121,12 +123,23 @@ const rows = computed(() => {
         return t.latest_analysis?.final_score ?? -1
       case 'added':
         return t.added_at ? new Date(t.added_at).getTime() : 0
+      case 'whale_buy':
+        return t.whales_24h?.buy_usd ?? 0
+      case 'whale_trades':
+        return t.whales_24h?.trades ?? 0
       default:
         return t[sortKey.value] ?? 0
     }
   }
   return [...list].sort((a, b) => value(b) - value(a))
 })
+
+/** What the whale cell does not show: the split, the selling, and what counts as a whale for this pool. */
+function whaleTitle(t: Token): string {
+  const w = t.whales_24h
+  if (!w) return ''
+  return `${w.buys} beli (${usd(w.buy_usd, true)}) · ${w.sells} jual (${usd(w.sell_usd, true)}) dalam 24 jam. Whale = transaksi ≥ ${usd(w.threshold_usd, true)}; ambangnya mengikuti likuiditas pool, jadi tidak sebanding antar token.`
+}
 
 const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string; label: string }> = {
   added: { icon: '＋', class: 'bg-up/15 text-up', label: 'Masuk' },
@@ -184,6 +197,7 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
               <th class="text-right!">Harga</th>
               <th class="text-right!">24j</th>
               <th class="text-right!">Likuiditas</th>
+              <th class="text-right!" title="Transaksi whale 24 jam terakhir dan total belinya">Whale 24j</th>
               <th class="text-right!">Skor 7 hari</th>
               <th>Rekomendasi</th>
             </tr>
@@ -219,6 +233,13 @@ const eventStyle: Record<WatchlistEvent['action'], { icon: string; class: string
               <td class="num text-right font-medium"><PriceFlash :value="t.price_usd">{{ price(t.price_usd) }}</PriceFlash></td>
               <td class="num text-right" :class="changeClass(t.price_change.h24)">{{ pct(t.price_change.h24) }}</td>
               <td class="num text-right">{{ usd(t.liquidity_usd, true) }}</td>
+              <td class="num text-right" :title="whaleTitle(t)">
+                <template v-if="t.whales_24h?.trades">
+                  <div>{{ t.whales_24h.trades }} tx</div>
+                  <div class="text-xs" :class="t.whales_24h.buy_usd ? 'text-up' : 'text-muted'">beli {{ usd(t.whales_24h.buy_usd, true) }}</div>
+                </template>
+                <span v-else class="text-muted">–</span>
+              </td>
               <td>
                 <ScoreSparkline :points="t.score_history ?? []" :declining="t.score_trend?.declining" :change="t.score_trend?.change" />
               </td>

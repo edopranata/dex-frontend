@@ -134,6 +134,8 @@ export interface Token {
   is_new: boolean
   added_at: string | null
   score_history?: { day: string; score: number }[]
+  /** Whale trades of the last 24 hours (token list only); a whale is a trade of at least threshold_usd. */
+  whales_24h?: { trades: number; buys: number; sells: number; buy_usd: number; sell_usd: number; threshold_usd: number }
   score_trend?: { declining: boolean; change: number | null; down_days: number; days: number }
   latest_analysis?: Analysis | null
   latest_security?: SecurityCheck | null

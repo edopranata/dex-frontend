@@ -18,6 +18,7 @@ import {
 } from 'lightweight-charts'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { price as formatPrice } from '@/lib/format'
+import { liveCandle } from '@/lib/liveCandle'
 import type { Candle, ChartMarker, Levels } from '@/lib/types'
 import { themeColor, useThemeStore } from '@/stores/theme'
 
@@ -26,8 +27,19 @@ const theme = useThemeStore()
 /**
  * seriesKey names what the candles are (token and timeframe). A new key draws the chart afresh and fits it;
  * a refresh of the same series only updates the latest candles, so the user's zoom and scroll stay.
+ *
+ * The stored candles lag the 15-second price by up to about 15 minutes. livePrice, with livePriceAt (when it was
+ * fetched) and intervalSeconds (the candle size), keeps the candle of the current period moving until it is stored.
  */
-const props = defineProps<{ candles: Candle[]; seriesKey?: string; levels?: Levels | null; livePrice?: number | null; markers?: ChartMarker[] }>()
+const props = defineProps<{
+  candles: Candle[]
+  seriesKey?: string
+  intervalSeconds?: number
+  levels?: Levels | null
+  livePrice?: number | null
+  livePriceAt?: string | null
+  markers?: ChartMarker[]
+}>()
 
 const container = ref<HTMLDivElement>()
 let chart: IChartApi | undefined
@@ -37,7 +49,10 @@ let ema20Series: ISeriesApi<'Line'> | undefined
 let ema50Series: ISeriesApi<'Line'> | undefined
 let priceLines: IPriceLine[] = []
 let markerPlugin: ISeriesMarkersPluginApi<Time> | undefined
-let lastCandle: Candle | undefined
+/** The newest stored candle drawn. */
+let storedLast: Candle | undefined
+/** The candle the live price drew: on the newest stored candle's period or a later one. */
+let liveBar: Candle | undefined
 let renderedKey: string | undefined
 let levelsKey = ''
 
@@ -74,11 +89,19 @@ function volumeBar(c: Candle) {
  */
 function refresh() {
   const candles = props.candles
-  const from = lastCandle?.open_time
+  const from = storedLast?.open_time
   const newest = candles.at(-1)
 
   if (!candleSeries || !volumeSeries || !ema20Series || !ema50Series || from === undefined || !newest || newest.open_time < from || props.seriesKey !== renderedKey) {
     render()
+
+    return
+  }
+
+  // A stored candle for a period before the live candle cannot be slotted in by an update: redraw, keeping the view.
+  const live = liveBar
+  if (live && candles.some((c) => c.open_time > from && c.open_time < live.open_time)) {
+    render(true)
 
     return
   }
@@ -89,19 +112,24 @@ function refresh() {
 
   candles.forEach((c, i) => {
     if (c.open_time < from) return
-    candleSeries!.update(bar(c))
+    // A stored candle before the live candle already drawn is a historical update (allowed only for existing points).
+    candleSeries!.update(bar(c), live !== undefined && c.open_time < live.open_time)
     volumeSeries!.update(volumeBar(c))
     if (ema20[i] !== null) ema20Series!.update({ time: c.open_time as UTCTimestamp, value: ema20[i]! })
     if (ema50[i] !== null) ema50Series!.update({ time: c.open_time as UTCTimestamp, value: ema50[i]! })
   })
 
-  lastCandle = { ...newest }
+  storedLast = { ...newest }
+  if (liveBar && liveBar.open_time <= newest.open_time) liveBar = undefined
   drawMarkers()
+  applyLivePrice()
 }
 
-function render() {
+/** keepView redraws the same series after a gap was filled, without resetting the user's zoom and scroll. */
+function render(keepView = false) {
   if (!chart || !candleSeries || !volumeSeries || !ema20Series || !ema50Series) return
 
+  const visible = keepView ? chart.timeScale().getVisibleRange() : null
   const candles = props.candles
   const sample = candles.at(-1)?.close ?? props.livePrice ?? 1
   const priceFormat = { type: 'custom' as const, formatter: (p: number) => formatPrice(p), minMove: minMove(sample) }
@@ -118,14 +146,38 @@ function render() {
   ema20Series.setData(toLine(ema(closes, 20)))
   ema50Series.setData(toLine(ema(closes, 50)))
 
-  lastCandle = candles.at(-1) ? { ...candles.at(-1)! } : undefined
+  storedLast = candles.at(-1) ? { ...candles.at(-1)! } : undefined
+  liveBar = undefined
   renderedKey = props.seriesKey
+  drawMarkers()
+  applyLivePrice()
+
+  if (keepView) {
+    if (visible) chart.timeScale().setVisibleRange(visible)
+
+    return
+  }
+
   levelsKey = ''
   drawLevels()
-  drawMarkers()
   chart.timeScale().fitContent()
   // A new series starts with the price axis following the candles again.
   candleSeries.priceScale().setAutoScale(true)
+}
+
+/** Draws the live price into the candle of the period it was fetched in. */
+function applyLivePrice() {
+  const live = props.livePrice
+  const size = props.intervalSeconds
+  if (!live || !size || !storedLast || !candleSeries) return
+
+  const fetchedAt = props.livePriceAt ? Date.parse(props.livePriceAt) / 1000 : Date.now() / 1000
+  if (!Number.isFinite(fetchedAt)) return
+
+  const next = liveCandle(storedLast, liveBar, live, fetchedAt, size)
+  if (!next) return
+  liveBar = next
+  candleSeries.update(bar(next))
 }
 
 function drawLevels() {
@@ -221,17 +273,8 @@ watch(
 watch(() => props.levels, drawLevels)
 watch(() => props.markers, drawMarkers)
 
-// Move the last candle with the live price between candle syncs.
-watch(
-  () => props.livePrice,
-  (live) => {
-    if (!live || !lastCandle || !candleSeries) return
-    lastCandle.close = live
-    lastCandle.high = Math.max(lastCandle.high, live)
-    lastCandle.low = Math.min(lastCandle.low, live)
-    candleSeries.update({ time: lastCandle.open_time as UTCTimestamp, open: lastCandle.open, high: lastCandle.high, low: lastCandle.low, close: lastCandle.close })
-  },
-)
+// The time matters too: the same price fetched in a new period opens a new candle.
+watch(() => [props.livePrice, props.livePriceAt], applyLivePrice)
 </script>
 
 <template>

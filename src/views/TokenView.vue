@@ -34,8 +34,18 @@ const whaleThreshold = ref<number>(0)
 const candles = ref<Candle[]>([])
 /** Which token (counted on each real token change) and timeframe the candles belong to. */
 const candlesKey = ref('')
+/** The URL id the candles were loaded for, so a new token's price is never drawn on the old token's candles. */
+const candlesFor = ref('')
 let tokenSerial = 0
 const timeframe = ref<'15m' | '1h' | '4h' | '1d'>('1h')
+const timeframeSeconds = { '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 } as const
+/** The candle size of the loaded candles (the chosen timeframe can run ahead of them while they load). */
+const candleSeconds = computed(() => timeframeSeconds[candlesKey.value.split(':')[1] as keyof typeof timeframeSeconds])
+const chartLivePrice = computed(() => {
+  const t = token.value
+  const id = candlesFor.value
+  return t && (t.slug === id.toUpperCase() || String(t.id) === id) ? t.price_usd : null
+})
 const whales = ref<WhaleTrade[]>([])
 const news = ref<NewsItem[]>([])
 const orders = ref<Order[]>([])
@@ -70,9 +80,11 @@ async function fetchToken() {
 
 async function loadCandles() {
   const key = `${tokenSerial}:${timeframe.value}`
+  const id = props.id
   const { data } = await api.get<{ data: Candle[] }>(`/tokens/${props.id}/candles`, { params: { timeframe: timeframe.value } })
   // Set together, so the chart knows a new token or timeframe from a refresh of the same one.
   candlesKey.value = key
+  candlesFor.value = id
   candles.value = data.data
 }
 
@@ -234,8 +246,8 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
             </ol>
           </div>
           <div class="h-[320px] sm:h-[420px]">
-            <CandleChart v-if="candles.length" :candles="candles" :series-key="candlesKey" :levels="chartLevels" :markers="lotMarkers" :live-price="token.price_usd" />
-            <EmptyState v-else title="Data candle belum tersedia" description="Candle diambil dari GeckoTerminal setiap 10 menit. Token baru butuh 1–3 menit." />
+            <CandleChart v-if="candles.length" :candles="candles" :series-key="candlesKey" :levels="chartLevels" :markers="lotMarkers" :interval-seconds="candleSeconds" :live-price="chartLivePrice" :live-price-at="token.price_updated_at" />
+            <EmptyState v-else title="Data candle belum tersedia" description="Candle diambil dari GeckoTerminal setiap 15 menit. Token baru butuh 1–3 menit." />
           </div>
         </section>
 

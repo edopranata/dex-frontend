@@ -1,28 +1,18 @@
 <script setup lang="ts">
 import { usePageData } from '@/composables/usePolling'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import Skeleton from '@/components/Skeleton.vue'
 import { api, errorMessage } from '@/lib/api'
 import { useConfirmStore } from '@/stores/confirm'
 import { useToastStore } from '@/stores/toast'
-import AppSelect from '@/components/AppSelect.vue'
-import AppSwitch from '@/components/AppSwitch.vue'
+import SettingField, { type SettingFieldData as Field } from '@/components/SettingField.vue'
 
-interface Field {
+/** A sub-section of a settings card; provider sections fold away while the provider is not in the chain. */
+interface Section {
   key: string
   label: string
-  type: 'string' | 'secret' | 'int' | 'float' | 'bool' | 'select'
+  provider?: string
   description?: string
-  options?: Record<string, string>
-  min?: number
-  max?: number
-  step?: number
-  value?: string | number | boolean | null
-  default?: string | number | boolean | null
-  overridden: boolean
-  is_set?: boolean
-  masked?: string | null
-  source?: 'panel' | 'env' | null
 }
 
 interface AiProviderStatus {
@@ -70,6 +60,7 @@ interface Group {
   key: string
   label: string
   description: string
+  sections?: Section[]
   fields: Field[]
 }
 
@@ -197,10 +188,39 @@ function when(iso: string | null): string {
   return new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-function display(value: unknown): string {
-  if (value === null || value === undefined || value === '') return '(kosong)'
-  if (typeof value === 'boolean') return value ? 'Aktif' : 'Nonaktif'
-  return String(value)
+const CHAIN_KEYS = ['market.ai.provider', 'market.ai.fallback_provider', 'market.ai.fallback_provider_2', 'market.ai.fallback_provider_3']
+
+/** Providers in the order they are tried, as currently picked in the form (before saving too). */
+const chain = computed(() => CHAIN_KEYS.map((key) => form[key]).filter((p): p is string => typeof p === 'string' && p !== 'none'))
+
+function role(provider: string): string | null {
+  const index = chain.value.indexOf(provider)
+  if (index < 0) return null
+  return index === 0 ? 'Utama' : `Cadangan ${index}`
+}
+
+function hasKey(group: Group, provider: string): boolean {
+  const field = group.fields.find((f) => f.key === `market.ai.${provider === 'gemini_2' ? 'gemini' : provider}.key`)
+  if (!field) return false
+  const typed = form[field.key]
+  return !!field.is_set || (typeof typed === 'string' && typed.trim() !== '')
+}
+
+function generalSections(group: Group): Section[] {
+  return (group.sections ?? []).filter((s) => !s.provider)
+}
+
+/** Providers in the chain first, in chain order, then the rest as listed. */
+function providerSections(group: Group): Section[] {
+  const rank = (s: Section) => {
+    const index = chain.value.indexOf(s.provider ?? '')
+    return index < 0 ? 99 : index
+  }
+  return (group.sections ?? []).filter((s) => s.provider).sort((a, b) => rank(a) - rank(b))
+}
+
+function fieldsOf(group: Group, section: Section): Field[] {
+  return group.fields.filter((f) => f.section === section.key)
 }
 </script>
 
@@ -283,46 +303,52 @@ function display(value: unknown): string {
         <p class="text-muted">Setiap pengguna menghubungkan Telegram-nya sendiri dengan kode unik di <RouterLink to="/profile/telegram" class="text-brand hover:underline">Profil → Telegram</RouterLink>.</p>
       </div>
 
-      <div class="mt-4 grid gap-4 md:grid-cols-2 3xl:grid-cols-3">
-        <label v-for="field in group.fields" :key="field.key" class="block">
-          <span class="mb-1 flex items-center justify-between gap-2 text-xs">
-            <span class="font-medium text-text">{{ field.label }}</span>
-            <span v-if="field.overridden" class="flex items-center gap-2">
-              <span class="rounded bg-brand/15 px-1.5 text-[10px] text-brand">diubah di panel</span>
-              <button type="button" class="text-[10px] text-muted underline hover:text-text" @click="reset(field)">reset ke .env</button>
-            </span>
-          </span>
+      <div v-if="group.sections" class="mt-4 space-y-5">
+        <section v-for="section in generalSections(group)" :key="section.key">
+          <h3 class="text-[11px] font-semibold tracking-wide text-muted uppercase">{{ section.label }}</h3>
+          <p v-if="section.description" class="mt-0.5 text-[11px] text-muted">{{ section.description }}</p>
+          <div class="mt-2 grid gap-4" :class="section.key === 'chain' ? 'sm:grid-cols-2 xl:grid-cols-4' : 'md:grid-cols-3'">
+            <SettingField v-for="field in fieldsOf(group, section)" :key="field.key" v-model="form[field.key]" :field="field" @reset="reset" />
+          </div>
+        </section>
 
-          <template v-if="field.type === 'secret'">
-            <input v-model="form[field.key] as string" type="password" class="num w-full" autocomplete="new-password" :placeholder="field.is_set ? `Terisi ${field.masked} — kosongkan jika tidak diganti` : 'Belum diisi'" />
-            <span class="mt-1 block text-[11px]" :class="field.is_set ? 'text-up' : 'text-muted'">
-              {{ field.is_set ? `Terisi (${field.source === 'panel' ? 'dari panel' : 'dari .env'})` : 'Kosong' }}
-            </span>
-          </template>
-          <AppSelect
-            v-else-if="field.type === 'select'"
-            v-model="form[field.key] as string"
-            class="w-full"
-            :options="Object.entries(field.options ?? {}).map(([value, label]) => ({ value, label }))"
-          />
-          <span v-else-if="field.type === 'bool'" class="flex items-center gap-2 py-2">
-            <AppSwitch v-model="form[field.key] as boolean" :label="field.label" />
-            <span class="text-sm">{{ form[field.key] ? 'Aktif' : 'Nonaktif' }}</span>
-          </span>
-          <input
-            v-else-if="field.type === 'int' || field.type === 'float'"
-            v-model.number="form[field.key]"
-            type="number"
-            class="num w-full"
-            :min="field.min"
-            :max="field.max"
-            :step="field.step ?? (field.type === 'int' ? 1 : 'any')"
-          />
-          <input v-else v-model="form[field.key] as string" class="w-full" />
+        <section>
+          <h3 class="text-[11px] font-semibold tracking-wide text-muted uppercase">Provider</h3>
+          <p class="mt-0.5 text-[11px] text-muted">Urut sesuai urutan di atas. Provider yang tidak dipakai dilipat.</p>
+          <div class="mt-2 space-y-2">
+            <details
+              v-for="section in providerSections(group)"
+              :key="section.key"
+              class="group/provider rounded-lg border border-line bg-panel-2/30"
+              :open="role(section.provider!) !== null"
+            >
+              <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 text-sm [&::-webkit-details-marker]:hidden">
+                <svg viewBox="0 0 20 20" fill="currentColor" class="h-3.5 w-3.5 shrink-0 text-muted transition-transform group-open/provider:rotate-90" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M7.2 14.8a.75.75 0 0 1 0-1.06L10.94 10 7.2 6.26a.75.75 0 1 1 1.06-1.06l4.27 4.27a.75.75 0 0 1 0 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0Z" clip-rule="evenodd" />
+                </svg>
+                <span class="font-medium">{{ section.label }}</span>
+                <span
+                  class="badge-mini"
+                  :class="role(section.provider!) === 'Utama' ? 'bg-brand/15 text-brand' : role(section.provider!) ? 'bg-panel text-text ring-1 ring-line' : 'bg-panel text-muted ring-1 ring-line'"
+                >{{ role(section.provider!) ?? 'Tidak dipakai' }}</span>
+                <span class="text-[11px]" :class="hasKey(group, section.provider!) ? 'text-up' : 'text-muted'">
+                  {{ hasKey(group, section.provider!) ? 'key terisi' : 'belum ada key' }}
+                </span>
+                <span class="num ml-auto truncate text-xs text-muted">{{ form[`market.ai.${section.provider}.model`] }}</span>
+              </summary>
+              <div class="border-t border-line p-3">
+                <p v-if="section.description" class="mb-3 text-[11px] text-muted">{{ section.description }}</p>
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <SettingField v-for="field in fieldsOf(group, section)" :key="field.key" v-model="form[field.key]" :field="field" @reset="reset" />
+                </div>
+              </div>
+            </details>
+          </div>
+        </section>
+      </div>
 
-          <span v-if="field.description" class="mt-1 block text-[11px] text-muted">{{ field.description }}</span>
-          <span v-if="field.overridden && field.type !== 'secret'" class="mt-0.5 block text-[11px] text-muted">Nilai .env: {{ display(field.default) }}</span>
-        </label>
+      <div v-else class="mt-4 grid gap-4 md:grid-cols-2 3xl:grid-cols-3">
+        <SettingField v-for="field in group.fields" :key="field.key" v-model="form[field.key]" :field="field" @reset="reset" />
       </div>
 
       <div class="mt-5 flex justify-end">

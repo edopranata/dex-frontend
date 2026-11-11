@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AnimatedNumber from '@/components/AnimatedNumber.vue'
 import AppIcon from '@/components/AppIcon.vue'
+import AppSwitcher from '@/components/AppSwitcher.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import FeedMenu from '@/components/FeedMenu.vue'
 import FeedNotices from '@/components/FeedNotices.vue'
@@ -196,6 +197,8 @@ onBeforeUnmount(() => {
           </nav>
         </template>
       </div>
+
+      <AppSwitcher current="dex" />
 
       <!-- User -->
       <div class="flex shrink-0 items-center gap-2 border-t border-line p-3">

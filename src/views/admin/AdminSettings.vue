@@ -200,7 +200,8 @@ function role(provider: string): string | null {
 }
 
 function hasKey(group: Group, provider: string): boolean {
-  const field = group.fields.find((f) => f.key === `market.ai.${provider === 'gemini_2' ? 'gemini' : provider}.key`)
+  // A second slot (gemini_2, groq_2) borrows the key of its first slot.
+  const field = group.fields.find((f) => f.key === `market.ai.${provider.replace(/_\d+$/, '')}.key`)
   if (!field) return false
   const typed = form[field.key]
   return !!field.is_set || (typeof typed === 'string' && typed.trim() !== '')

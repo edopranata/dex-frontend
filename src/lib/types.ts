@@ -259,17 +259,8 @@ export interface PositionCardData extends Position {
   history_total: number
 }
 
-export interface Portfolio {
-  balance_usd: number
-  holdings_value_usd: number
-  equity_usd: number
-  starting_balance: number
-  total_pnl: number
-  total_pnl_pct: number
-  unrealized_pnl: number
-  realized_pnl: number
-  fees_paid: number
-  trades: number
+/** GET /portfolio: the same figures as the summary, plus the position cards. */
+export interface Portfolio extends PortfolioSummary {
   positions: PositionCardData[]
 }
 

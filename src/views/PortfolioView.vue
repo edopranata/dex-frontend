@@ -16,11 +16,15 @@ import { orderStatusClass, orderStatusLabel, targetLabel } from '@/lib/orders'
 import type { Order, OrderHistorySummary, OrderStatus, OrderType, Paginated, Portfolio, Side, Token } from '@/lib/types'
 import { useAuthStore } from '@/stores/auth'
 import { useConfirmStore } from '@/stores/confirm'
+import { usePortfolioStore } from '@/stores/portfolio'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const portfolio = ref<Portfolio | null>(null)
+const shared = usePortfolioStore()
+/** The same snapshot the sidebar shows; whichever poll answered last wins in both places. */
+const figures = computed(() => shared.summary ?? portfolio.value)
 const orders = ref<Order[]>([])
 const ordersLoaded = ref(false)
 const summary = ref<OrderHistorySummary | null>(null)
@@ -86,6 +90,7 @@ async function loadOrders() {
 async function load() {
   const [p] = await Promise.all([api.get<Portfolio>('/portfolio'), loadOrders()])
   portfolio.value = p.data
+  shared.apply(p.data)
 }
 
 usePolling(load, 10000)
@@ -206,10 +211,10 @@ async function reset() {
     </div>
 
     <div class="grid grid-cols-2 gap-section lg:grid-cols-4">
-      <StatCard :loading="!portfolio" label="Ekuitas" :amount="portfolio?.equity_usd" :format="usd" :hint="`Modal awal ${usd(portfolio?.starting_balance)}`" />
-      <StatCard :loading="!portfolio" label="Total P&L" :amount="portfolio?.total_pnl" :format="usd" :hint="pct(portfolio?.total_pnl_pct)" :tone="(portfolio?.total_pnl ?? 0) >= 0 ? 'up' : 'down'" style="animation-delay: 60ms" />
-      <StatCard :loading="!portfolio" label="P&L terealisasi" :amount="portfolio?.realized_pnl" :format="usd" :tone="(portfolio?.realized_pnl ?? 0) >= 0 ? 'up' : 'down'" style="animation-delay: 120ms" />
-      <StatCard :loading="!portfolio" label="Fee dibayar" :amount="portfolio?.fees_paid" :format="usd" :hint="`${portfolio?.trades ?? 0} transaksi`" style="animation-delay: 180ms" />
+      <StatCard :loading="!figures" label="Ekuitas" :amount="figures?.equity_usd" :format="usd" :hint="`Modal awal ${usd(figures?.starting_balance)}`" />
+      <StatCard :loading="!figures" label="Total P&L" :amount="figures?.total_pnl" :format="usd" :hint="pct(figures?.total_pnl_pct)" :tone="(figures?.total_pnl ?? 0) >= 0 ? 'up' : 'down'" style="animation-delay: 60ms" />
+      <StatCard :loading="!figures" label="P&L terealisasi" :amount="figures?.realized_pnl" :format="usd" :tone="(figures?.realized_pnl ?? 0) >= 0 ? 'up' : 'down'" style="animation-delay: 120ms" />
+      <StatCard :loading="!figures" label="Fee dibayar" :amount="figures?.fees_paid" :format="usd" :hint="`${figures?.trades ?? 0} transaksi`" style="animation-delay: 180ms" />
     </div>
 
     <section>

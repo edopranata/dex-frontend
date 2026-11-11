@@ -4,7 +4,9 @@ import { api } from '@/lib/api'
 import type { PortfolioSummary } from '@/lib/types'
 
 /**
- * Equity and P&L for the sidebar. Polled while the app layout is mounted; views that trade call refresh().
+ * Equity and P&L for the sidebar and the portfolio page. Polled while the app layout is mounted; views
+ * that trade call refresh(), and views that fetch the same figures pass them to apply(), so every place
+ * shows one snapshot instead of two polls taken at different moments.
  */
 export const usePortfolioStore = defineStore('portfolio', () => {
   const summary = ref<PortfolioSummary | null>(null)
@@ -13,9 +15,27 @@ export const usePortfolioStore = defineStore('portfolio', () => {
   async function refresh(): Promise<void> {
     try {
       const { data } = await api.get<PortfolioSummary>('/portfolio/summary')
-      summary.value = data
+      apply(data)
     } catch {
       // Keep the last figures; the next poll tries again.
+    }
+  }
+
+  /** Figures from any endpoint that returns them, such as GET /portfolio. */
+  function apply(figures: PortfolioSummary): void {
+    summary.value = {
+      balance_usd: figures.balance_usd,
+      holdings_value_usd: figures.holdings_value_usd,
+      equity_usd: figures.equity_usd,
+      starting_balance: figures.starting_balance,
+      total_pnl: figures.total_pnl,
+      total_pnl_pct: figures.total_pnl_pct,
+      unrealized_pnl: figures.unrealized_pnl,
+      realized_pnl: figures.realized_pnl,
+      fees_paid: figures.fees_paid,
+      trades: figures.trades,
+      open_positions: figures.open_positions,
+      pending_orders: figures.pending_orders,
     }
   }
 
@@ -30,5 +50,5 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     timer = undefined
   }
 
-  return { summary, refresh, start, stop }
+  return { summary, refresh, apply, start, stop }
 })

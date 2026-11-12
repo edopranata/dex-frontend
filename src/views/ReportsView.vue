@@ -65,6 +65,7 @@ interface Report {
   chains: (Summary & { chain: string; label: string; by_recommendation: Partial<Record<Recommendation, Summary>> })[]
   accounts: Account[]
   shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number }[]
+  holder_filter?: { rule: string; recorded: number; open: number; overlap: number; not_entered: number; trades: number; wins: number; total_r: number; avg_r: number | null }[]
 }
 
 const report = ref<Report | null>(null)
@@ -217,6 +218,41 @@ function week(start: string): string {
               <td class="num text-right" :class="changeClass(v.actual_r)">{{ r(v.actual_r) }}</td>
               <td class="num text-right" :class="changeClass(v.shadow_r)">{{ r(v.shadow_r) }}</td>
               <td class="num text-right" :class="changeClass(v.shadow_r - v.actual_r)">{{ v.signals ? r(v.shadow_r - v.actual_r) : '–' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section v-if="report.holder_filter?.length" class="card overflow-x-auto">
+        <h2 class="card-title p-4 pb-1">Uji aturan holder v6: diterima vs ditahan</h2>
+        <p class="px-4 pb-2 text-xs text-muted">
+          Tidak mengubah trading. Strong Buy yang ditahan karena 10 holder teratas memegang 20% supply atau lebih tetap dicatat dengan level entry, stop, dan targetnya, lalu diikuti di candle 15 menit.
+          Sinyal asli diikuti dengan cara yang sama sebagai pembanding, jadi angkanya bisa berbeda sedikit dari hasil sinyal di atas. Satu token hanya punya satu yang berjalan per kelompok; sisanya tidak dihitung.
+          Kalau kelompok yang ditahan rugi lebih besar, aturannya bekerja.
+        </p>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Kelompok</th>
+              <th class="text-right">Tercatat</th>
+              <th class="text-right">Berjalan</th>
+              <th class="text-right">Tidak entry</th>
+              <th class="text-right">Trade selesai</th>
+              <th class="text-right">Win rate</th>
+              <th class="text-right">Total R</th>
+              <th class="text-right">Rata-rata</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="h in report.holder_filter" :key="h.rule">
+              <td>{{ h.rule === 'accepted' ? 'Diterima v6 (sinyal asli)' : 'Ditahan aturan holder' }}</td>
+              <td class="num text-right">{{ h.recorded - h.overlap }}</td>
+              <td class="num text-right">{{ h.open }}</td>
+              <td class="num text-right">{{ h.not_entered }}</td>
+              <td class="num text-right">{{ h.trades }}</td>
+              <td class="num text-right">{{ h.trades ? Math.round((h.wins / h.trades) * 100) + '%' : '–' }}</td>
+              <td class="num text-right" :class="changeClass(h.total_r)">{{ h.trades ? r(h.total_r) : '–' }}</td>
+              <td class="num text-right" :class="changeClass(h.avg_r ?? 0)">{{ h.avg_r === null ? '–' : r(h.avg_r) }}</td>
             </tr>
           </tbody>
         </table>

@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # The server builds the frontend into the Laravel image (npm run build:laravel) from the dex-frontend clone.
+      # ci-deploy.sh moves only the frontend, to the commit built here; the backend stays at its deployed version.
       - name: Deploy to VPS
         env:
           SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
@@ -44,7 +45,7 @@ jobs:
           # The VPS NAT sometimes resets connections from some runner IPs before sshd sees them (exit 255).
           for attempt in 1 2 3 4 5; do
             status=0
-            ssh -i ~/.ssh/deploy_key -p "${PORT:-22}" -o BatchMode=yes -o ConnectTimeout=20 deploy@"$HOST" deploy || status=$?
+            ssh -i ~/.ssh/deploy_key -p "${PORT:-22}" -o BatchMode=yes -o ConnectTimeout=20 deploy@"$HOST" "deploy frontend $GITHUB_SHA" || status=$?
             [ "$status" -ne 255 ] && exit "$status"
             echo "SSH gagal tersambung (percobaan $attempt), coba lagi dalam 20 detik…"
             sleep 20

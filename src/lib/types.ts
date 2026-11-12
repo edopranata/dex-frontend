@@ -304,7 +304,7 @@ export interface Paginated<T> {
   meta: { current_page: number; last_page: number; total: number }
 }
 
-export type CandidateSource = 'geckoterminal_trending' | 'coingecko_trending' | 'dexscreener_boost'
+export type CandidateSource = 'geckoterminal_trending' | 'coingecko_trending' | 'dexscreener_boost' | 'jupiter_trending' | 'jupiter_organic'
 
 export interface Candidate {
   id: number

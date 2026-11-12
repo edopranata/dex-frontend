@@ -69,6 +69,8 @@ const sourceMeta: Record<CandidateSource, { label: string; class: string; title:
   geckoterminal_trending: { label: 'Trending DEX', class: 'bg-brand/15 text-brand', title: 'Masuk trending pools GeckoTerminal' },
   coingecko_trending: { label: 'Trending pencarian', class: 'bg-violet-500/15 text-violet-700 dark:text-violet-300', title: 'Paling banyak dicari di CoinGecko (24 jam)' },
   dexscreener_boost: { label: 'Boost (iklan)', class: 'bg-warn/15 text-warn', title: 'Promosi berbayar di DEX Screener, bukan permintaan organik' },
+  jupiter_trending: { label: 'Jupiter trending', class: 'bg-panel-2 text-muted', title: 'Top trending Jupiter (6 jam). Hanya dicatat, belum memengaruhi skor' },
+  jupiter_organic: { label: 'Jupiter organik', class: 'bg-panel-2 text-muted', title: 'Top organic score Jupiter (6 jam), volume tanpa bot. Hanya dicatat, belum memengaruhi skor' },
 }
 
 const tabs = computed(() => [
@@ -157,8 +159,8 @@ function ageDays(iso: string | null) {
               <span v-if="ageDays(c.pair_created_at) !== null" class="text-xs text-muted">· umur {{ ageDays(c.pair_created_at) }} hari</span>
             </div>
             <div class="mt-1 flex flex-wrap gap-1">
-              <span v-for="s in c.sources" :key="s" class="rounded px-1.5 py-0.5 text-[11px] font-medium" :class="sourceMeta[s].class" :title="sourceMeta[s].title">
-                {{ sourceMeta[s].label }}
+              <span v-for="s in c.sources" :key="s" class="rounded px-1.5 py-0.5 text-[11px] font-medium" :class="sourceMeta[s]?.class ?? 'bg-panel-2 text-muted'" :title="sourceMeta[s]?.title">
+                {{ sourceMeta[s]?.label ?? s }}
               </span>
               <span v-if="c.news_mentions" class="rounded bg-panel-2 px-1.5 py-0.5 text-[11px] text-muted">{{ c.news_mentions }} berita</span>
             </div>

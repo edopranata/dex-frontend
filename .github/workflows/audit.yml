@@ -1,0 +1,22 @@
+name: Security audit
+
+# Warns only; it never blocks or starts a deploy. Scheduled runs use main; GitHub emails the owner when one fails.
+# Dev-only build tools are left out: they never reach the browser.
+on:
+  push:
+    branches: [dev]
+  pull_request:
+  schedule:
+    - cron: "0 1 * * 1" # Monday 08:00 WIB
+  workflow_dispatch:
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Audit production packages
+        run: npm audit --package-lock-only --omit=dev --audit-level=moderate

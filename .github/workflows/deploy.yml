@@ -3,6 +3,10 @@ name: Build & Deploy
 on:
   push:
     branches: [main]
+    # Dependency and audit settings alone must not restart production.
+    paths-ignore:
+      - '.github/dependabot.yml'
+      - '.github/workflows/audit.yml'
   workflow_dispatch:
 
 concurrency:

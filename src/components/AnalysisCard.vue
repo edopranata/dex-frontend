@@ -34,6 +34,17 @@ const levels = computed(() => {
   return rows.map(([label, value, color]) => ({ label, value, color, distance: ref ? ((value - ref) / ref) * 100 : null }))
 })
 
+/** How the token moved with BTC over the last hours (recorded per analysis since 15 Nov 2026). */
+const btc = computed(() => {
+  const relation = props.analysis?.indicators?.btc as
+    | { corr: number; beta: number; hours: number; token_change_24h: number | null; btc_change_24h: number | null; relative_24h: number | null }
+    | null
+    | undefined
+  if (!relation) return null
+  const follows = relation.corr >= 0.3 ? 'Ikut BTC' : relation.corr < 0.1 ? 'Bergerak sendiri' : 'Sebagian ikut BTC'
+  return { ...relation, follows }
+})
+
 const signalStatus: Record<string, string> = {
   pending: 'Menunggu harga masuk zona entry',
   active: 'Aktif: harga sudah masuk zona entry',
@@ -84,6 +95,31 @@ const providerLabel: Record<string, string> = { template: 'otomatis (tanpa AI)',
 
       <div class="mt-4 space-y-2.5">
         <ScoreBar v-for="(label, key) in labels" :key="key" :label="label" :score="analysis.scores[key]" :weight="weights[key]" />
+      </div>
+
+      <div v-if="btc" class="mt-4 rounded-lg bg-panel-2 p-3 text-sm">
+        <div class="flex items-center justify-between">
+          <div class="card-title">Gerak terhadap BTC</div>
+          <span class="text-xs font-medium" :class="btc.corr >= 0.3 ? 'text-brand' : 'text-muted'">{{ btc.follows }}</span>
+        </div>
+        <dl class="mt-2 grid grid-cols-3 gap-2 text-xs">
+          <div>
+            <dt class="text-muted">Korelasi</dt>
+            <dd class="num font-medium">{{ btc.corr.toFixed(2) }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted">Beta</dt>
+            <dd class="num font-medium">{{ btc.beta.toFixed(2) }}</dd>
+          </div>
+          <div>
+            <dt class="text-muted">24 jam vs BTC</dt>
+            <dd class="num font-medium">{{ pct(btc.relative_24h, 1) }}</dd>
+          </div>
+        </dl>
+        <p class="mt-2 text-[11px] leading-relaxed text-muted">
+          Dari return per jam selama {{ btc.hours }} jam. Korelasi 1 = selalu searah BTC, 0 = tidak berhubungan. Beta 2 = rata-rata bergerak dua kali BTC.
+          Token {{ pct(btc.token_change_24h, 1) }}, BTC {{ pct(btc.btc_change_24h, 1) }} dalam 24 jam. Hanya dicatat; belum dipakai aturan.
+        </p>
       </div>
 
       <div v-if="levels.length" class="mt-4">

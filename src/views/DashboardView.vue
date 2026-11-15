@@ -14,8 +14,16 @@ import { changeClass, pct, price, usd } from '@/lib/format'
 import type { Analysis, Candidate, NewsItem, Portfolio, Recommendation, WhaleTrade } from '@/lib/types'
 import { tokenPath } from '@/lib/links'
 
+interface Benchmark {
+  price: number | null
+  change_24h: number | null
+  trend_4h: 'bullish' | 'bearish' | 'sideways' | null
+  as_of: string | null
+}
+
 interface Overview {
   fear_greed: { value: number; classification: string } | null
+  benchmarks?: Record<string, Benchmark>
   recommendation_counts: Record<Recommendation, number>
   top_picks: Analysis[]
   warnings: Analysis[]
@@ -25,6 +33,8 @@ interface Overview {
 }
 
 const overview = ref<Overview | null>(null)
+const trendLabel: Record<string, string> = { bullish: 'Naik', bearish: 'Turun', sideways: 'Datar' }
+const trendClass: Record<string, string> = { bullish: 'text-up', bearish: 'text-down', sideways: 'text-muted' }
 const portfolio = ref<Portfolio | null>(null)
 
 usePolling(async () => {
@@ -114,6 +124,20 @@ const order: Recommendation[] = ['STRONG_BUY', 'BUY', 'HOLD', 'SELL', 'STRONG_SE
         <p class="mt-4 text-xs leading-relaxed text-muted">
           Indeks sentimen pasar kripto secara umum (0 = ketakutan ekstrem, 100 = keserakahan ekstrem). Dipakai 20% dalam skor sentimen.
         </p>
+        <template v-if="overview?.benchmarks">
+          <h3 class="card-title mt-5">Acuan pasar</h3>
+          <table class="mt-2 w-full text-sm">
+            <tbody>
+              <tr v-for="(b, name) in overview.benchmarks" :key="name" class="border-t border-line">
+                <td class="py-1.5 font-medium">{{ name }}</td>
+                <td class="num py-1.5 text-right">{{ price(b.price) }}</td>
+                <td class="num py-1.5 text-right" :class="changeClass(b.change_24h)">{{ pct(b.change_24h, 1) }}</td>
+                <td class="py-1.5 text-right text-xs" :class="trendClass[b.trend_4h ?? ''] ?? 'text-muted'">{{ b.trend_4h ? trendLabel[b.trend_4h] : '–' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="mt-2 text-[11px] leading-relaxed text-muted">Harga dari pool DEX (BTC = cbBTC/USDC di Base), perubahan 24 jam, dan tren 4 jam. Tanda – berarti data belum ada atau sudah basi.</p>
+        </template>
       </section>
     </div>
 

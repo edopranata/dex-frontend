@@ -29,6 +29,7 @@ interface Detail {
     first_at: string
     last_at: string
     likely_bot: boolean
+  bot_reason?: 'pace' | 'balanced' | null
   }
   tokens: { id: number; slug: string; symbol: string; image_url: string | null; trades: number; buys: number; sells: number; buy_usd: number; sell_usd: number; last_at: string }[]
   trades: { data: WhaleTrade[]; meta: { current_page: number; last_page: number; total: number } }
@@ -65,6 +66,13 @@ watch(
 function copy() {
   navigator.clipboard?.writeText(props.address).then(() => toast.info('Alamat wallet disalin'))
 }
+
+/** Why a wallet looks automated; a guess from its pattern, not a fact. */
+function botReasonText(reason: string | null | undefined): string {
+  return reason === 'balanced'
+    ? 'Beli dan jual hampir seimbang (minimal 10 transaksi): pola market maker atau bot arbitrase. Perkiraan, bisa keliru'
+    : 'Sangat sering bertransaksi (minimal 50 transaksi dan 20 per hari). Perkiraan, bisa keliru'
+}
 </script>
 
 <template>
@@ -74,7 +82,7 @@ function copy() {
       <h1 class="num mt-1 text-sm font-semibold break-all sm:text-lg">{{ address }}</h1>
       <div class="mt-2 flex flex-wrap items-center gap-2 text-xs">
         <span v-if="detail" class="rounded bg-panel-2 px-1.5 py-0.5 text-muted">{{ detail.wallet.chain_label }}</span>
-        <span v-if="detail?.wallet.likely_bot" class="rounded bg-warn/15 px-1.5 py-0.5 font-medium text-warn" title="Perkiraan dari frekuensi transaksi, bisa keliru">Kemungkinan bot</span>
+        <span v-if="detail?.wallet.likely_bot" class="rounded bg-warn/15 px-1.5 py-0.5 font-medium text-warn" :title="botReasonText(detail?.wallet.bot_reason)">Kemungkinan bot</span>
         <button type="button" class="btn-ghost inline-flex items-center gap-1 px-2 py-1 text-xs" @click="copy">
           <AppIcon name="copy" class="h-3.5 w-3.5" />
           Salin alamat

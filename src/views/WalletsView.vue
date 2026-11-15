@@ -22,6 +22,7 @@ interface WalletRow {
   volume_usd: number
   last_at: string
   likely_bot: boolean
+  bot_reason?: 'pace' | 'balanced' | null
 }
 
 type SortKey = 'trades' | 'tokens' | 'buys' | 'sells' | 'volume_usd' | 'last_at'
@@ -96,6 +97,13 @@ function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
 function copy(address: string) {
   navigator.clipboard?.writeText(address).then(() => toast.info('Alamat wallet disalin'))
 }
+
+/** Why a wallet looks automated; a guess from its pattern, not a fact. */
+function botReasonText(reason: string | null | undefined): string {
+  return reason === 'balanced'
+    ? 'Beli dan jual hampir seimbang (minimal 10 transaksi): pola market maker atau bot arbitrase. Perkiraan, bisa keliru'
+    : 'Sangat sering bertransaksi (minimal 50 transaksi dan 20 per hari). Perkiraan, bisa keliru'
+}
 </script>
 
 <template>
@@ -145,7 +153,7 @@ function copy(address: string) {
                     <button type="button" class="text-muted transition hover:text-text" :aria-label="`Salin alamat ${row.wallet}`" title="Salin alamat" @click="copy(row.wallet)">
                       <AppIcon name="copy" class="h-3.5 w-3.5" />
                     </button>
-                    <span v-if="row.likely_bot" class="rounded bg-warn/15 px-1.5 py-0.5 text-[10px] font-medium text-warn" title="Perkiraan dari frekuensi transaksi, bisa keliru">
+                    <span v-if="row.likely_bot" class="rounded bg-warn/15 px-1.5 py-0.5 text-[10px] font-medium text-warn" :title="botReasonText(row?.bot_reason)">
                       <span class="sm:hidden">Bot?</span>
                       <span class="hidden sm:inline">Kemungkinan bot</span>
                     </span>

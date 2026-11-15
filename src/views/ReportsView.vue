@@ -123,6 +123,13 @@ function week(start: string): string {
   const format = (date: Date) => date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
   return `${format(from)} – ${format(to)}`
 }
+
+const shadowRuleLabel: Record<string, string> = {
+  accepted: 'Diterima v6 (sinyal asli)',
+  top10_holders: 'Ditahan aturan holder',
+  buy_btc_rising: 'Buy (bayangan) saat tren 4 jam BTC naik',
+  buy_btc_not_rising: 'Buy (bayangan) saat tren 4 jam BTC tidak naik',
+}
 </script>
 
 <template>
@@ -224,11 +231,12 @@ function week(start: string): string {
       </section>
 
       <section v-if="report.holder_filter?.length" class="card overflow-x-auto">
-        <h2 class="card-title p-4 pb-1">Uji aturan holder v6: diterima vs ditahan</h2>
+        <h2 class="card-title p-4 pb-1">Sinyal bayangan: aturan holder v6 dan Buy</h2>
         <p class="px-4 pb-2 text-xs text-muted">
           Tidak mengubah trading. Strong Buy yang ditahan karena 10 holder teratas memegang 20% supply atau lebih tetap dicatat dengan level entry, stop, dan targetnya, lalu diikuti di candle 15 menit.
           Sinyal asli diikuti dengan cara yang sama sebagai pembanding, jadi angkanya bisa berbeda sedikit dari hasil sinyal di atas. Satu token hanya punya satu yang berjalan per kelompok; sisanya tidak dihitung.
           Kalau kelompok yang ditahan rugi lebih besar, aturannya bekerja.
+          Sejak 15 Nov 2026 setiap Buy (yang tidak lagi menjadi sinyal sejak v5) juga diikuti dengan cara yang sama, dipisah menurut tren 4 jam BTC saat analisa, untuk menilai apakah Buy layak aktif lagi saat BTC naik. Nilai Fear &amp; Greed tiap Buy ikut tercatat.
         </p>
         <table class="table">
           <thead>
@@ -245,7 +253,7 @@ function week(start: string): string {
           </thead>
           <tbody>
             <tr v-for="h in report.holder_filter" :key="h.rule">
-              <td>{{ h.rule === 'accepted' ? 'Diterima v6 (sinyal asli)' : 'Ditahan aturan holder' }}</td>
+              <td>{{ shadowRuleLabel[h.rule] ?? h.rule }}</td>
               <td class="num text-right">{{ h.recorded - h.overlap }}</td>
               <td class="num text-right">{{ h.open }}</td>
               <td class="num text-right">{{ h.not_entered }}</td>

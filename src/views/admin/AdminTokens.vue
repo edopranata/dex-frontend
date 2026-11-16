@@ -24,7 +24,7 @@ interface TokenRow {
   candles: Record<string, number>
   candle_rows: number
   latest_15m_at: string | null
-  fetch: 'every_15m' | 'rotation'
+  fetch: 'every_15m' | 'recent' | 'rotation'
   gap: boolean
   signals: number
 }
@@ -35,6 +35,9 @@ interface Summary {
   out_of_market: number
   gaps: number
   out_groups: { under_7: number; '7_to_30': number; over_30: number }
+  recent: number
+  recent_refresh_hours: number
+  recent_signal_days: number
   rotation_per_hour: number
   rotation_hours: number | null
   rotation_limit_hours: number
@@ -107,7 +110,7 @@ const timeframes = ['15m', '1h', '4h', '1d']
         <StatCard
           label="Giliran token keluar"
           :value="`${summary.rotation_per_hour} token/jam`"
-          :hint="summary.rotation_hours === null ? 'Belum ada token yang keluar' : `Tiap token diperbarui ±${days(summary.rotation_hours / 24)} sekali; aman sampai ${days(summary.rotation_limit_hours / 24)}`"
+          :hint="`${summary.recent} token bersinyal ${summary.recent_signal_days} hari terakhir tiap ${summary.recent_refresh_hours} jam. ` + (summary.rotation_hours === null ? 'Belum ada token lain yang keluar' : `Lainnya ±${days(summary.rotation_hours / 24)} sekali; aman sampai ${days(summary.rotation_limit_hours / 24)}`)"
           :tone="rotationLate ? 'down' : undefined"
         />
         <StatCard label="Candle tersimpan" :value="number(summary.candle_rows)" :hint="`${number(summary.candle_rows_out_of_market)} milik token yang sudah keluar`" />
@@ -187,7 +190,7 @@ const timeframes = ['15m', '1h', '4h', '1d']
                   {{ t.latest_15m_at ? timeAgo(t.latest_15m_at) : '–' }}
                   <span v-if="t.gap" class="block text-[11px] font-medium text-warn">Data bolong</span>
                 </td>
-                <td class="text-xs whitespace-nowrap">{{ t.fetch === 'every_15m' ? 'Tiap 15 menit' : 'Bergiliran' }}</td>
+                <td class="text-xs whitespace-nowrap">{{ t.fetch === 'every_15m' ? 'Tiap 15 menit' : t.fetch === 'recent' ? `Tiap ${summary?.recent_refresh_hours ?? 2} jam (bersinyal)` : 'Bergiliran' }}</td>
                 <td class="num text-right">{{ t.signals }}</td>
                 <td class="whitespace-nowrap">
                   <button

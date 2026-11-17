@@ -64,8 +64,8 @@ interface Report {
   tokens: (Summary & { symbol: string; slug: string })[]
   chains: (Summary & { chain: string; label: string; by_recommendation: Partial<Record<Recommendation, Summary>> })[]
   accounts: Account[]
-  shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number }[]
-  holder_filter?: { rule: string; recorded: number; open: number; overlap: number; not_entered: number; trades: number; wins: number; total_r: number; avg_r: number | null }[]
+  shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number; gaps?: number }[]
+  holder_filter?: { rule: string; recorded: number; open: number; overlap: number; not_entered: number; trades: number; wins: number; total_r: number; avg_r: number | null; gaps?: number; gap_r?: number }[]
 }
 
 const report = ref<Report | null>(null)
@@ -202,6 +202,7 @@ const shadowRuleLabel: Record<string, string> = {
         <p class="px-4 pb-2 text-xs text-muted">
           Tidak mengubah trading. Tiap baris menghitung ulang sinyal yang sudah selesai seandainya aturannya berlaku: keluar di harga analisa itu dengan target yang sudah tercapai tetap dihitung,
           atau 0R untuk sinyal yang tidak akan dibuka. Biaya dianggap sama. Hanya sinyal yang entry setelah datanya mulai dicatat yang dihitung, jadi sampelnya masih kecil.
+          Data bercelah: sinyal yang candle-nya untuk aturan berbasis candle kurang lengkap (lebih dari 10% hilang, atau 21 jam sebelum entry tidak bersambung); hasilnya tetap dihitung, tetapi kurang bisa dipercaya.
         </p>
         <table class="table">
           <thead>
@@ -212,6 +213,7 @@ const shadowRuleLabel: Record<string, string> = {
               <th class="text-right">R aktual</th>
               <th class="text-right">R bayangan</th>
               <th class="text-right">Selisih</th>
+              <th class="text-right">Data bercelah</th>
             </tr>
           </thead>
           <tbody>
@@ -225,6 +227,7 @@ const shadowRuleLabel: Record<string, string> = {
               <td class="num text-right" :class="changeClass(v.actual_r)">{{ r(v.actual_r) }}</td>
               <td class="num text-right" :class="changeClass(v.shadow_r)">{{ r(v.shadow_r) }}</td>
               <td class="num text-right" :class="changeClass(v.shadow_r - v.actual_r)">{{ v.signals ? r(v.shadow_r - v.actual_r) : '–' }}</td>
+              <td class="num text-right" :class="v.gaps ? 'text-warn' : 'text-muted'">{{ v.gaps ?? '–' }}</td>
             </tr>
           </tbody>
         </table>
@@ -237,6 +240,7 @@ const shadowRuleLabel: Record<string, string> = {
           Sinyal asli diikuti dengan cara yang sama sebagai pembanding, jadi angkanya bisa berbeda sedikit dari hasil sinyal di atas. Satu token hanya punya satu yang berjalan per kelompok; sisanya tidak dihitung.
           Kalau kelompok yang ditahan rugi lebih besar, aturannya bekerja.
           Sejak 15 Nov 2026 setiap Buy (yang tidak lagi menjadi sinyal sejak v5) juga diikuti dengan cara yang sama, dipisah menurut tren 4 jam BTC saat analisa, untuk menilai apakah Buy layak aktif lagi saat BTC naik. Nilai Fear &amp; Greed tiap Buy ikut tercatat.
+          Data bercelah: trade selesai yang lebih dari 10% candle 15 menitnya hilang selama diikuti, dengan total R-nya.
         </p>
         <table class="table">
           <thead>
@@ -249,6 +253,7 @@ const shadowRuleLabel: Record<string, string> = {
               <th class="text-right">Win rate</th>
               <th class="text-right">Total R</th>
               <th class="text-right">Rata-rata</th>
+              <th class="text-right">Data bercelah</th>
             </tr>
           </thead>
           <tbody>
@@ -261,6 +266,7 @@ const shadowRuleLabel: Record<string, string> = {
               <td class="num text-right">{{ h.trades ? Math.round((h.wins / h.trades) * 100) + '%' : '–' }}</td>
               <td class="num text-right" :class="changeClass(h.total_r)">{{ h.trades ? r(h.total_r) : '–' }}</td>
               <td class="num text-right" :class="changeClass(h.avg_r ?? 0)">{{ h.avg_r === null ? '–' : r(h.avg_r) }}</td>
+              <td class="num text-right" :class="h.gaps ? 'text-warn' : 'text-muted'">{{ h.gaps ? `${h.gaps} (${r(h.gap_r ?? 0)})` : (h.gaps ?? '–') }}</td>
             </tr>
           </tbody>
         </table>

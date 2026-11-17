@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * Links to the four simulators, each with its own favicon mark. The same file lives in every app's
+ * Links to the five simulators, each with its own favicon mark. The same file lives in every app's
  * frontend; only `current` differs. Each app still has its own login until the central account.
  */
-type AppKey = 'us' | 'idx' | 'dex' | 'fx'
+type AppKey = 'us' | 'idx' | 'dex' | 'fx' | 'spot'
 
 defineProps<{ current: AppKey }>()
 
@@ -12,6 +12,7 @@ const APPS: { key: AppKey; name: string; short: string; url: string; color: stri
   { key: 'idx', name: 'IDX Stock Analyzer', short: 'IDX', url: 'https://stocksim.tune-in.trade', color: '#8b5cf6' },
   { key: 'dex', name: 'DEX Simulator', short: 'DEX', url: 'https://dexsim.tune-in.trade', color: '#22c55e' },
   { key: 'fx', name: 'Forex Simulator', short: 'FX', url: 'https://fxsim.tune-in.trade', color: '#14b8a6' },
+  { key: 'spot', name: 'Spot Simulator', short: 'SPOT', url: 'https://spotsim.tune-in.trade', color: '#f59e0b' },
 ]
 
 /** Keeps the end tooltips inside the sidebar instead of centring them past its edge. */
@@ -32,7 +33,7 @@ function tooltipPlace(index: number): string {
       :aria-label="app.name"
       :aria-current="app.key === current ? 'page' : undefined"
       :tabindex="app.key === current ? 0 : undefined"
-      class="group relative flex w-12 flex-col items-center gap-1 rounded-lg py-1 outline-none transition focus-visible:ring-2 focus-visible:ring-brand"
+      class="group relative flex w-10 flex-col items-center gap-1 rounded-lg py-1 outline-none transition focus-visible:ring-2 focus-visible:ring-brand"
       :class="app.key === current ? 'bg-panel-2' : 'opacity-70 hover:bg-panel-2/60 hover:opacity-100 focus-visible:opacity-100'"
     >
       <svg viewBox="0 0 32 32" class="h-7 w-7" aria-hidden="true">

@@ -202,7 +202,7 @@ const shadowRuleLabel: Record<string, string> = {
         <p class="px-4 pb-2 text-xs text-muted">
           Tidak mengubah trading. Tiap baris menghitung ulang sinyal yang sudah selesai seandainya aturannya berlaku: keluar di harga analisa itu dengan target yang sudah tercapai tetap dihitung,
           atau 0R untuk sinyal yang tidak akan dibuka. Biaya dianggap sama. Hanya sinyal yang entry setelah datanya mulai dicatat yang dihitung, jadi sampelnya masih kecil.
-          Data bercelah: sinyal yang candle-nya untuk aturan berbasis candle kurang lengkap (lebih dari 10% hilang, atau 21 jam sebelum entry tidak bersambung); hasilnya tetap dihitung, tetapi kurang bisa dipercaya.
+          Jam tanpa transaksi tidak punya candle; konfirmasi candle menganggapnya candle datar tanpa volume. Data bercelah: sinyal yang harganya melompat lebih dari 2% melewati candle yang hilang (data kemungkinan tidak lengkap), atau belum punya candle sebelum entry; hasilnya tetap dihitung, tetapi kurang bisa dipercaya.
         </p>
         <table class="table">
           <thead>
@@ -240,7 +240,7 @@ const shadowRuleLabel: Record<string, string> = {
           Sinyal asli diikuti dengan cara yang sama sebagai pembanding, jadi angkanya bisa berbeda sedikit dari hasil sinyal di atas. Satu token hanya punya satu yang berjalan per kelompok; sisanya tidak dihitung.
           Kalau kelompok yang ditahan rugi lebih besar, aturannya bekerja.
           Sejak 15 Nov 2026 setiap Buy (yang tidak lagi menjadi sinyal sejak v5) juga diikuti dengan cara yang sama, dipisah menurut tren 4 jam BTC saat analisa, untuk menilai apakah Buy layak aktif lagi saat BTC naik. Nilai Fear &amp; Greed tiap Buy ikut tercatat.
-          Data bercelah: trade selesai yang lebih dari 10% candle 15 menitnya hilang selama diikuti, dengan total R-nya.
+          Data bercelah: trade selesai yang harganya melompat lebih dari 2% melewati candle 15 menit yang hilang selama diikuti, dengan total R-nya. Periode tanpa transaksi (harga sama sebelum dan sesudah) tidak dihitung.
         </p>
         <table class="table">
           <thead>

@@ -4,12 +4,14 @@ import AccountPortfolio from '@/components/AccountPortfolio.vue'
 import AccountReportPanel from '@/components/AccountReportPanel.vue'
 import AppSelect from '@/components/AppSelect.vue'
 import EquityChart from '@/components/EquityChart.vue'
+import MarketCells, { type MarketAt } from '@/components/MarketCells.vue'
 import RecommendationBadge from '@/components/RecommendationBadge.vue'
+import ShadowSignalList from '@/components/ShadowSignalList.vue'
 import Skeleton from '@/components/Skeleton.vue'
 import StatCard from '@/components/StatCard.vue'
 import { usePolling } from '@/composables/usePolling'
 import { api } from '@/lib/api'
-import { changeClass, dateTime, pct, usd } from '@/lib/format'
+import { changeClass, dateTime, pct, price, usd } from '@/lib/format'
 import type { Recommendation } from '@/lib/types'
 
 interface Summary {
@@ -53,6 +55,23 @@ interface Account {
   has_room: boolean
 }
 
+/** One signal under a candidate v5 rule: its real result, what the rule did to it, and the market at entry. */
+interface ShadowExitRow {
+  id: number
+  symbol: string
+  slug: string
+  entered_at: string
+  actual_r: number
+  shadow_r: number
+  action: 'unchanged' | 'skipped' | 'exit'
+  exit_at: string | null
+  exit_price: number | null
+  taken: number | null
+  held: boolean
+  gappy: boolean
+  market: MarketAt
+}
+
 interface Report {
   version: string | null
   current_version: string
@@ -64,7 +83,7 @@ interface Report {
   tokens: (Summary & { symbol: string; slug: string })[]
   chains: (Summary & { chain: string; label: string; by_recommendation: Partial<Record<Recommendation, Summary>> })[]
   accounts: Account[]
-  shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number; gaps?: number }[]
+  shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number; gaps?: number; rows?: ShadowExitRow[] }[]
   holder_filter?: { rule: string; recorded: number; open: number; overlap: number; not_entered: number; trades: number; wins: number; total_r: number; avg_r: number | null; gaps?: number; gap_r?: number }[]
 }
 
@@ -122,6 +141,18 @@ function week(start: string): string {
   const to = new Date(from.getTime() + 6 * 86400000)
   const format = (date: Date) => date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
   return `${format(from)} – ${format(to)}`
+}
+
+// One open detail per table: the rule or group key whose signals are listed under it.
+const openVariant = ref<string | null>(null)
+const openGroup = ref<string | null>(null)
+
+function ruleAction(row: ShadowExitRow): string {
+  if (row.action === 'unchanged') return 'Tidak berubah'
+  if (row.action === 'skipped') return 'Tidak dibuka (0R)'
+  const after = row.taken ? ` setelah target ${row.taken}` : ''
+  if (row.held) return `Masih dipegang, dinilai di close ${dateTime(row.exit_at)} (${price(row.exit_price)})${after}`
+  return `Keluar ${dateTime(row.exit_at)} di ${price(row.exit_price)}${after}`
 }
 
 const shadowRuleLabel: Record<string, string> = {
@@ -203,6 +234,7 @@ const shadowRuleLabel: Record<string, string> = {
           Tidak mengubah trading. Tiap baris menghitung ulang sinyal yang sudah selesai seandainya aturannya berlaku: keluar di harga analisa itu dengan target yang sudah tercapai tetap dihitung,
           atau 0R untuk sinyal yang tidak akan dibuka. Biaya dianggap sama. Hanya sinyal yang entry setelah datanya mulai dicatat yang dihitung, jadi sampelnya masih kecil.
           Jam tanpa transaksi tidak punya candle; konfirmasi candle menganggapnya candle datar tanpa volume. Data bercelah: sinyal yang harganya melompat lebih dari 2% melewati candle yang hilang (data kemungkinan tidak lengkap), atau belum punya candle sebelum entry; hasilnya tetap dihitung, tetapi kurang bisa dipercaya.
+          Klik satu aturan untuk melihat sinyalnya satu per satu. Harga BTC, tren 4 jam BTC, dan Fear &amp; Greed diambil dari analisa token terakhir sebelum entry (snapshot pasar yang disimpan tiap analisa).
         </p>
         <table class="table">
           <thead>
@@ -217,18 +249,54 @@ const shadowRuleLabel: Record<string, string> = {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="v in report.shadow_exit" :key="v.key">
-              <td>
-                {{ v.label }}
-                <span class="block text-[11px] text-muted">Entry sejak {{ dateTime(v.since) }}</span>
-              </td>
-              <td class="num text-right">{{ v.signals }}</td>
-              <td class="num text-right">{{ v.affected }}</td>
-              <td class="num text-right" :class="changeClass(v.actual_r)">{{ r(v.actual_r) }}</td>
-              <td class="num text-right" :class="changeClass(v.shadow_r)">{{ r(v.shadow_r) }}</td>
-              <td class="num text-right" :class="changeClass(v.shadow_r - v.actual_r)">{{ v.signals ? r(v.shadow_r - v.actual_r) : '–' }}</td>
-              <td class="num text-right" :class="v.gaps ? 'text-warn' : 'text-muted'">{{ v.gaps ?? '–' }}</td>
-            </tr>
+            <template v-for="v in report.shadow_exit" :key="v.key">
+              <tr class="cursor-pointer hover:bg-panel-2/50" :aria-expanded="openVariant === v.key" @click="openVariant = openVariant === v.key ? null : v.key">
+                <td>
+                  <span class="mr-1 inline-block w-3 text-muted">{{ openVariant === v.key ? '▾' : '▸' }}</span>{{ v.label }}
+                  <span class="block text-[11px] text-muted">Entry sejak {{ dateTime(v.since) }}</span>
+                </td>
+                <td class="num text-right">{{ v.signals }}</td>
+                <td class="num text-right">{{ v.affected }}</td>
+                <td class="num text-right" :class="changeClass(v.actual_r)">{{ r(v.actual_r) }}</td>
+                <td class="num text-right" :class="changeClass(v.shadow_r)">{{ r(v.shadow_r) }}</td>
+                <td class="num text-right" :class="changeClass(v.shadow_r - v.actual_r)">{{ v.signals ? r(v.shadow_r - v.actual_r) : '–' }}</td>
+                <td class="num text-right" :class="v.gaps ? 'text-warn' : 'text-muted'">{{ v.gaps ?? '–' }}</td>
+              </tr>
+              <tr v-if="openVariant === v.key">
+                <td colspan="7" class="bg-panel-2/40 p-0">
+                  <div v-if="v.rows?.length" class="overflow-x-auto">
+                    <table class="table text-xs">
+                      <thead>
+                        <tr>
+                          <th>Token</th>
+                          <th>Entry</th>
+                          <th>Yang dilakukan aturan</th>
+                          <th class="text-right">R aktual</th>
+                          <th class="text-right">R aturan</th>
+                          <th class="text-right">Harga BTC</th>
+                          <th>Tren 4 jam BTC</th>
+                          <th class="text-right">Fear &amp; Greed</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="row in v.rows" :key="row.id">
+                          <td class="whitespace-nowrap"><RouterLink :to="`/tokens/${row.slug}`" class="font-medium hover:text-brand">{{ row.symbol }}</RouterLink></td>
+                          <td class="whitespace-nowrap">{{ dateTime(row.entered_at) }}</td>
+                          <td :class="row.action === 'unchanged' ? 'text-muted' : ''">
+                            {{ ruleAction(row) }}
+                            <span v-if="row.gappy" class="text-warn" title="Data candle kurang lengkap untuk sinyal ini"> · bercelah</span>
+                          </td>
+                          <td class="num text-right" :class="changeClass(row.actual_r)">{{ r(row.actual_r) }}</td>
+                          <td class="num text-right" :class="changeClass(row.shadow_r)">{{ r(row.shadow_r) }}</td>
+                          <MarketCells :market="row.market" />
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p v-else class="px-4 py-2 text-xs text-muted">Belum ada sinyal untuk aturan ini.</p>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </section>
@@ -241,6 +309,7 @@ const shadowRuleLabel: Record<string, string> = {
           Kalau kelompok yang ditahan rugi lebih besar, aturannya bekerja.
           Sejak 15 Nov 2026 setiap Buy (yang tidak lagi menjadi sinyal sejak v5) juga diikuti dengan cara yang sama, dipisah menurut tren 4 jam BTC saat analisa, untuk menilai apakah Buy layak aktif lagi saat BTC naik. Nilai Fear &amp; Greed tiap Buy ikut tercatat.
           Data bercelah: trade selesai yang harganya melompat lebih dari 2% melewati candle 15 menit yang hilang selama diikuti, dengan total R-nya. Periode tanpa transaksi (harga sama sebelum dan sesudah) tidak dihitung.
+          Klik satu kelompok untuk melihat sinyalnya satu per satu, terbaru dulu. Harga BTC, tren 4 jam BTC, dan Fear &amp; Greed diambil saat entry; untuk yang belum atau tidak entry, saat dicatat.
         </p>
         <table class="table">
           <thead>
@@ -257,17 +326,22 @@ const shadowRuleLabel: Record<string, string> = {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="h in report.holder_filter" :key="h.rule">
-              <td>{{ shadowRuleLabel[h.rule] ?? h.rule }}</td>
-              <td class="num text-right">{{ h.recorded - h.overlap }}</td>
-              <td class="num text-right">{{ h.open }}</td>
-              <td class="num text-right">{{ h.not_entered }}</td>
-              <td class="num text-right">{{ h.trades }}</td>
-              <td class="num text-right">{{ h.trades ? Math.round((h.wins / h.trades) * 100) + '%' : '–' }}</td>
-              <td class="num text-right" :class="changeClass(h.total_r)">{{ h.trades ? r(h.total_r) : '–' }}</td>
-              <td class="num text-right" :class="changeClass(h.avg_r ?? 0)">{{ h.avg_r === null ? '–' : r(h.avg_r) }}</td>
-              <td class="num text-right" :class="h.gaps ? 'text-warn' : 'text-muted'">{{ h.gaps ? `${h.gaps} (${r(h.gap_r ?? 0)})` : (h.gaps ?? '–') }}</td>
-            </tr>
+            <template v-for="h in report.holder_filter" :key="h.rule">
+              <tr class="cursor-pointer hover:bg-panel-2/50" :aria-expanded="openGroup === h.rule" @click="openGroup = openGroup === h.rule ? null : h.rule">
+                <td><span class="mr-1 inline-block w-3 text-muted">{{ openGroup === h.rule ? '▾' : '▸' }}</span>{{ shadowRuleLabel[h.rule] ?? h.rule }}</td>
+                <td class="num text-right">{{ h.recorded - h.overlap }}</td>
+                <td class="num text-right">{{ h.open }}</td>
+                <td class="num text-right">{{ h.not_entered }}</td>
+                <td class="num text-right">{{ h.trades }}</td>
+                <td class="num text-right">{{ h.trades ? Math.round((h.wins / h.trades) * 100) + '%' : '–' }}</td>
+                <td class="num text-right" :class="changeClass(h.total_r)">{{ h.trades ? r(h.total_r) : '–' }}</td>
+                <td class="num text-right" :class="changeClass(h.avg_r ?? 0)">{{ h.avg_r === null ? '–' : r(h.avg_r) }}</td>
+                <td class="num text-right" :class="h.gaps ? 'text-warn' : 'text-muted'">{{ h.gaps ? `${h.gaps} (${r(h.gap_r ?? 0)})` : (h.gaps ?? '–') }}</td>
+              </tr>
+              <tr v-if="openGroup === h.rule">
+                <td colspan="9" class="bg-panel-2/40 p-0"><ShadowSignalList :group="h.rule" /></td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </section>

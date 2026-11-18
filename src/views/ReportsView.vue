@@ -234,7 +234,7 @@ const shadowRuleLabel: Record<string, string> = {
           Tidak mengubah trading. Tiap baris menghitung ulang sinyal yang sudah selesai seandainya aturannya berlaku: keluar di harga analisa itu dengan target yang sudah tercapai tetap dihitung,
           atau 0R untuk sinyal yang tidak akan dibuka. Biaya dianggap sama. Hanya sinyal yang entry setelah datanya mulai dicatat yang dihitung, jadi sampelnya masih kecil.
           Jam tanpa transaksi tidak punya candle; konfirmasi candle menganggapnya candle datar tanpa volume. Data bercelah: sinyal yang harganya melompat lebih dari 2% melewati candle yang hilang (data kemungkinan tidak lengkap), atau belum punya candle sebelum entry; hasilnya tetap dihitung, tetapi kurang bisa dipercaya.
-          Klik satu aturan untuk melihat sinyalnya satu per satu. Harga BTC, tren 4 jam BTC, dan Fear &amp; Greed diambil dari analisa token terakhir sebelum entry (snapshot pasar yang disimpan tiap analisa).
+          Klik satu aturan untuk melihat sinyalnya satu per satu. Harga BTC, tren 4 jam BTC, dan Fear &amp; Greed diambil dari analisa token terakhir sebelum entry (snapshot pasar yang disimpan tiap analisa). Sebelum 15 Nov snapshot belum menyimpan BTC; harga (≈) dan tren (*) BTC untuk sinyal itu dihitung ulang dari candle BTC yang sudah tutup sebelum entry.
         </p>
         <table class="table">
           <thead>
@@ -309,7 +309,7 @@ const shadowRuleLabel: Record<string, string> = {
           Kalau kelompok yang ditahan rugi lebih besar, aturannya bekerja.
           Sejak 15 Nov 2026 setiap Buy (yang tidak lagi menjadi sinyal sejak v5) juga diikuti dengan cara yang sama, dipisah menurut tren 4 jam BTC saat analisa, untuk menilai apakah Buy layak aktif lagi saat BTC naik. Nilai Fear &amp; Greed tiap Buy ikut tercatat.
           Data bercelah: trade selesai yang harganya melompat lebih dari 2% melewati candle 15 menit yang hilang selama diikuti, dengan total R-nya. Periode tanpa transaksi (harga sama sebelum dan sesudah) tidak dihitung.
-          Klik satu kelompok untuk melihat sinyalnya satu per satu, terbaru dulu. Harga BTC, tren 4 jam BTC, dan Fear &amp; Greed diambil saat entry; untuk yang belum atau tidak entry, saat dicatat.
+          Klik satu kelompok untuk melihat sinyalnya satu per satu, terbaru dulu. Harga BTC, tren 4 jam BTC, dan Fear &amp; Greed diambil saat entry; untuk yang belum atau tidak entry, saat dicatat. Tanda ≈ dan * berarti BTC dihitung ulang dari candle tersimpan.
         </p>
         <table class="table">
           <thead>

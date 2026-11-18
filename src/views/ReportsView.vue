@@ -63,7 +63,9 @@ interface ShadowExitRow {
   entered_at: string
   actual_r: number
   shadow_r: number
-  action: 'unchanged' | 'skipped' | 'exit'
+  action: 'unchanged' | 'skipped' | 'exit' | 'later_entry'
+  rule_entry_at?: string | null
+  rule_entry_price?: number | null
   exit_at: string | null
   exit_price: number | null
   taken: number | null
@@ -151,6 +153,10 @@ function ruleAction(row: ShadowExitRow): string {
   if (row.action === 'unchanged') return 'Tidak berubah'
   if (row.action === 'skipped') return 'Tidak dibuka (0R)'
   const after = row.taken ? ` setelah target ${row.taken}` : ''
+  if (row.action === 'later_entry') {
+    const entry = `Entry ${dateTime(row.rule_entry_at)} di ${price(row.rule_entry_price)}, `
+    return row.held ? `${entry}masih dipegang, dinilai di close ${dateTime(row.exit_at)} (${price(row.exit_price)})${after}` : `${entry}keluar ${dateTime(row.exit_at)} di ${price(row.exit_price)}${after}`
+  }
   if (row.held) return `Masih dipegang, dinilai di close ${dateTime(row.exit_at)} (${price(row.exit_price)})${after}`
   return `Keluar ${dateTime(row.exit_at)} di ${price(row.exit_price)}${after}`
 }

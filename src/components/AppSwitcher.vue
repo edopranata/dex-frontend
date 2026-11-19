@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * Links to the five simulators, each with its own favicon mark. The same file lives in every app's
+ * Links to the six simulators, each with its own favicon mark. The same file lives in every app's
  * frontend; only `current` differs. Each app still has its own login until the central account.
  */
-type AppKey = 'us' | 'idx' | 'dex' | 'fx' | 'spot'
+type AppKey = 'us' | 'idx' | 'dex' | 'fx' | 'spot' | 'future'
 
 defineProps<{ current: AppKey }>()
 
@@ -13,6 +13,7 @@ const APPS: { key: AppKey; name: string; short: string; url: string; color: stri
   { key: 'dex', name: 'DEX Simulator', short: 'DEX', url: 'https://dexsim.tune-in.trade', color: '#22c55e' },
   { key: 'fx', name: 'Forex Simulator', short: 'FX', url: 'https://fxsim.tune-in.trade', color: '#14b8a6' },
   { key: 'spot', name: 'Spot Simulator', short: 'SPOT', url: 'https://spotsim.tune-in.trade', color: '#f59e0b' },
+  { key: 'future', name: 'Future Simulator', short: 'FUT', url: 'https://futuresim.tune-in.trade', color: '#e11d48' },
 ]
 
 /** Keeps the end tooltips inside the sidebar instead of centring them past its edge. */

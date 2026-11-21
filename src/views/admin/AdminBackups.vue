@@ -14,7 +14,7 @@ interface Backup {
   created_at: string
 }
 
-/** Written by deploy/backup.sh after each upload to Cloudflare R2. */
+/** Written by deploy/backup.sh after each upload to Google Drive and/or Cloudflare R2. */
 interface OffsiteStatus {
   ok: boolean
   file: string
@@ -124,7 +124,7 @@ async function remove(backup: Backup) {
     <div v-if="backups" class="grid gap-section md:grid-cols-2">
       <div class="card p-4">
         <div class="flex items-center gap-2">
-          <div class="mr-auto text-sm font-medium">Salinan di luar VPS (Cloudflare R2)</div>
+          <div class="mr-auto text-sm font-medium">Salinan di luar VPS (Google Drive / R2)</div>
           <span v-if="!offsite" class="rounded bg-panel-2 px-1.5 py-0.5 text-xs text-muted">Belum diatur</span>
           <span v-else-if="!offsite.ok" class="rounded bg-down/15 px-1.5 py-0.5 text-xs text-down">Gagal</span>
           <span v-else-if="offsiteStale" class="rounded bg-warn/15 px-1.5 py-0.5 text-xs text-warn">Terlambat</span>

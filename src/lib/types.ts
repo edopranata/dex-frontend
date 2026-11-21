@@ -2,7 +2,7 @@ export type Recommendation = 'STRONG_BUY' | 'BUY' | 'HOLD' | 'SELL' | 'STRONG_SE
 export type Side = 'buy' | 'sell'
 export type OrderType = 'market' | 'limit' | 'stop_loss' | 'take_profit'
 export type OrderStatus = 'pending' | 'filled' | 'cancelled' | 'rejected'
-export type SignalStatus = 'pending' | 'active' | 'take_profit' | 'stop_loss' | 'invalidated' | 'expired'
+export type SignalStatus = 'pending' | 'active' | 'take_profit' | 'stop_loss' | 'invalidated' | 'expired' | 'downgraded'
 
 export interface User {
   id: number

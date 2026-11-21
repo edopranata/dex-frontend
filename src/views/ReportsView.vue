@@ -162,8 +162,9 @@ function ruleAction(row: ShadowExitRow): string {
 }
 
 const shadowRuleLabel: Record<string, string> = {
-  accepted: 'Diterima v6 (sinyal asli)',
+  accepted: 'Diterima (sinyal asli, diikuti sampai target atau stop)',
   top10_holders: 'Ditahan aturan holder',
+  high_score: 'Strong Buy skor 77+ (tidak jadi sinyal sejak v7)',
   buy_btc_rising: 'Buy (bayangan) saat tren 4 jam BTC naik',
   buy_btc_not_rising: 'Buy (bayangan) saat tren 4 jam BTC tidak naik',
 }

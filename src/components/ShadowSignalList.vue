@@ -63,6 +63,7 @@ onMounted(more)
 
 // The holder share is the metric of the v6 holder pair; for Buys the metric is Fear & Greed, already shown.
 const holders = props.group === 'top10_holders' || props.group === 'accepted'
+const scored = props.group === 'high_score'
 
 const statusLabel: Record<string, string> = {
   not_entered: 'Tidak entry',
@@ -97,6 +98,7 @@ function r(value: number | null): string {
           <th class="text-right">Target kena</th>
           <th class="text-right">R</th>
           <th v-if="holders" class="text-right">Top 10 holder</th>
+          <th v-if="scored" class="text-right">Skor</th>
           <th class="text-right">Harga BTC</th>
           <th>Tren 4 jam BTC</th>
           <th class="text-right">Fear &amp; Greed</th>
@@ -121,6 +123,7 @@ function r(value: number | null): string {
           <td class="num text-right">{{ row.entered_at ? `${row.max_tp_hit ?? 0}/3` : '–' }}</td>
           <td class="num text-right" :class="changeClass(row.net_r ?? 0)">{{ r(row.net_r) }}</td>
           <td v-if="holders" class="num text-right">{{ row.metric === null ? '–' : `${row.metric.toFixed(1)}%` }}</td>
+          <td v-if="scored" class="num text-right">{{ row.metric === null ? '–' : row.metric.toFixed(0) }}</td>
           <MarketCells :market="row.market" />
         </tr>
       </tbody>

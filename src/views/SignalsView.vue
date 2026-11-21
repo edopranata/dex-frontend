@@ -58,6 +58,7 @@ const statusLabel: Record<string, [string, string]> = {
   stop_loss: ['Stop loss', 'text-down'],
   invalidated: ['Batal (SL sebelum entry)', 'text-muted'],
   expired: ['Kedaluwarsa', 'text-muted'],
+  downgraded: ['Keluar: analisa tidak lagi Buy', 'text-muted'],
 }
 
 /** Take profit before the third target means the stop at the entry closed the rest, sometimes below it. */

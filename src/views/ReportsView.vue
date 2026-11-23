@@ -70,6 +70,8 @@ interface ShadowExitRow {
   exit_price: number | null
   taken: number | null
   held: boolean
+  /** Entered while the rule still held an earlier signal on the same token: left out of one position per token. */
+  overlapping?: boolean
   gappy: boolean
   market: MarketAt
 }
@@ -85,7 +87,7 @@ interface Report {
   tokens: (Summary & { symbol: string; slug: string })[]
   chains: (Summary & { chain: string; label: string; by_recommendation: Partial<Record<Recommendation, Summary>> })[]
   accounts: Account[]
-  shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number; gaps?: number; rows?: ShadowExitRow[] }[]
+  shadow_exit: { key: string; label: string; since: string; signals: number; affected: number; actual_r: number; shadow_r: number; held?: number; held_r?: number; overlapping?: number; one_per_token_r?: number; gaps?: number; rows?: ShadowExitRow[] }[]
   holder_filter?: { rule: string; recorded: number; open: number; overlap: number; not_entered: number; trades: number; wins: number; total_r: number; avg_r: number | null; gaps?: number; gap_r?: number }[]
 }
 
@@ -241,6 +243,8 @@ const shadowRuleLabel: Record<string, string> = {
           Tidak mengubah trading. Tiap baris menghitung ulang sinyal yang sudah selesai seandainya aturannya berlaku: keluar di harga analisa itu dengan target yang sudah tercapai tetap dihitung,
           atau 0R untuk sinyal yang tidak akan dibuka. Biaya dianggap sama. Hanya sinyal yang entry setelah datanya mulai dicatat yang dihitung, jadi sampelnya masih kecil.
           Jam tanpa transaksi tidak punya candle; konfirmasi candle menganggapnya candle datar tanpa volume. Data bercelah: sinyal yang harganya melompat lebih dari 2% melewati candle yang hilang (data kemungkinan tidak lengkap), atau belum punya candle sebelum entry; hasilnya tetap dihitung, tetapi kurang bisa dipercaya.
+          Aturan yang bisa menahan posisi (misalnya trailing ATR) menilai posisi yang belum keluar dengan close candle terakhir: bagian "masih terbuka" di bawah R bayangan belum menjadi hasil.
+          "Satu posisi per token" menghitung seperti akun sungguhan: sinyal yang entry saat aturan masih memegang sinyal sebelumnya di token yang sama tidak dibuka (0R). Selisih dihitung dari angka ini.
           Klik satu aturan untuk melihat sinyalnya satu per satu. Harga BTC, tren 4 jam BTC, dan Fear &amp; Greed diambil dari analisa token terakhir sebelum entry (snapshot pasar yang disimpan tiap analisa). Sebelum 15 Nov snapshot belum menyimpan BTC; harga (≈) dan tren (*) BTC untuk sinyal itu dihitung ulang dari candle BTC yang sudah tutup sebelum entry.
         </p>
         <table class="table">
@@ -251,6 +255,7 @@ const shadowRuleLabel: Record<string, string> = {
               <th class="text-right">Kena aturan</th>
               <th class="text-right">R aktual</th>
               <th class="text-right">R bayangan</th>
+              <th class="text-right">Satu posisi per token</th>
               <th class="text-right">Selisih</th>
               <th class="text-right">Data bercelah</th>
             </tr>
@@ -265,12 +270,19 @@ const shadowRuleLabel: Record<string, string> = {
                 <td class="num text-right">{{ v.signals }}</td>
                 <td class="num text-right">{{ v.affected }}</td>
                 <td class="num text-right" :class="changeClass(v.actual_r)">{{ r(v.actual_r) }}</td>
-                <td class="num text-right" :class="changeClass(v.shadow_r)">{{ r(v.shadow_r) }}</td>
-                <td class="num text-right" :class="changeClass(v.shadow_r - v.actual_r)">{{ v.signals ? r(v.shadow_r - v.actual_r) : '–' }}</td>
+                <td class="num text-right" :class="changeClass(v.shadow_r)">
+                  {{ r(v.shadow_r) }}
+                  <span v-if="v.held" class="block text-[11px] text-warn" title="Posisi yang belum keluar, dinilai di close candle terakhir">{{ v.held }} masih terbuka: {{ r(v.held_r ?? 0) }}</span>
+                </td>
+                <td class="num text-right" :class="changeClass(v.one_per_token_r ?? v.shadow_r)">
+                  {{ r(v.one_per_token_r ?? v.shadow_r) }}
+                  <span v-if="v.overlapping" class="block text-[11px] text-muted">{{ v.overlapping }} tumpang-tindih tidak dibuka</span>
+                </td>
+                <td class="num text-right" :class="changeClass((v.one_per_token_r ?? v.shadow_r) - v.actual_r)">{{ v.signals ? r((v.one_per_token_r ?? v.shadow_r) - v.actual_r) : '–' }}</td>
                 <td class="num text-right" :class="v.gaps ? 'text-warn' : 'text-muted'">{{ v.gaps ?? '–' }}</td>
               </tr>
               <tr v-if="openVariant === v.key">
-                <td colspan="7" class="bg-panel-2/40 p-0">
+                <td colspan="8" class="bg-panel-2/40 p-0">
                   <div v-if="v.rows?.length" class="overflow-x-auto">
                     <table class="table text-xs">
                       <thead>
@@ -291,6 +303,7 @@ const shadowRuleLabel: Record<string, string> = {
                           <td class="whitespace-nowrap">{{ dateTime(row.entered_at) }}</td>
                           <td :class="row.action === 'unchanged' ? 'text-muted' : ''">
                             {{ ruleAction(row) }}
+                            <span v-if="row.overlapping" class="text-muted" title="Aturan masih memegang sinyal sebelumnya di token ini saat sinyal ini entry"> · tumpang-tindih, tidak dihitung di satu posisi per token</span>
                             <span v-if="row.gappy" class="text-warn" title="Data candle kurang lengkap untuk sinyal ini"> · bercelah</span>
                           </td>
                           <td class="num text-right" :class="changeClass(row.actual_r)">{{ r(row.actual_r) }}</td>

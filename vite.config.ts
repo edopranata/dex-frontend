@@ -48,7 +48,7 @@ export default defineConfig({
         globIgnores: ['mail/**'],
         navigateFallback: '/index.html',
         // Laravel-only pages and endpoints are never answered from the app shell.
-        navigateFallbackDenylist: [/^\/api\//, /^\/sanctum\//, /^\/horizon/, /^\/up$/, /^\/health$/, /^\/mail\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/auth\/(redirect|callback)/, /^\/sanctum\//, /^\/horizon/, /^\/up$/, /^\/health$/, /^\/mail\//],
         cleanupOutdatedCaches: true,
       },
     }),
@@ -62,6 +62,8 @@ export default defineConfig({
       '/api': { target: backend },
       '/sanctum': { target: backend },
       '/horizon': { target: backend },
+      '/auth/redirect': { target: backend },
+      '/auth/callback': { target: backend },
     },
   },
 })

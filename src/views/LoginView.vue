@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import OtpInput from '@/components/OtpInput.vue'
 import { api, errorMessage } from '@/lib/api'
@@ -21,10 +21,30 @@ const requestingReset = ref(false)
 const twoFactor = ref(false)
 const useRecovery = ref(false)
 const code = ref('')
+const authMode = ref<'local' | 'both' | 'central'>('local')
+
+/** Why the last login through tune-in.trade came back without a session (set by /auth/callback). */
+const accountErrors: Record<string, string> = {
+  state: 'Login lewat tune-in.trade kedaluwarsa atau dibuka di tab lain. Coba lagi.',
+  denied: 'tune-in.trade menolak login ini: akun tidak punya akses ke aplikasi ini.',
+  unreachable: 'tune-in.trade sedang tidak bisa dihubungi. Coba lagi sebentar lagi.',
+  conflict: 'Email akun ini sudah terikat ke akun tune-in.trade lain. Hubungi admin.',
+}
+const accountError = computed(() => {
+  const key = route.query.account_error
+  return typeof key === 'string' ? (accountErrors[key] ?? 'Login lewat tune-in.trade gagal. Coba lagi.') : null
+})
+const accountLoginUrl = computed(() => {
+  const to = route.query.redirect
+  return typeof to === 'string' && to.startsWith('/') && !to.startsWith('//') ? `/auth/redirect?to=${encodeURIComponent(to)}` : '/auth/redirect'
+})
 
 onMounted(async () => {
-  const { data } = await api.get<{ password_reset_enabled: boolean }>('/auth/options')
+  const { data } = await api.get<{ password_reset_enabled: boolean; auth_mode?: 'local' | 'both' | 'central' }>('/auth/options')
   passwordResetEnabled.value = data.password_reset_enabled
+  authMode.value = data.auth_mode ?? 'local'
+  // tune-in.trade only: go there at once, unless the last try came back with an error or the user just logged out.
+  if (authMode.value === 'central' && !accountError.value && !auth.loggedOut) location.assign(accountLoginUrl.value)
 })
 
 function enter() {
@@ -92,17 +112,21 @@ function toggleRecovery() {
       </div>
       <template v-if="!twoFactor">
         <p class="text-sm text-muted">Latihan trading kripto dengan harga real dan uang virtual.</p>
-        <label class="block">
-          <span class="mb-1 block text-xs text-muted">Email</span>
-          <input v-model="email" type="email" class="w-full" autocomplete="email" required />
-        </label>
-        <div>
+        <a v-if="authMode !== 'local'" :href="accountLoginUrl" :class="authMode === 'central' ? 'btn-primary' : 'btn-ghost border border-line'" class="block w-full text-center">Masuk lewat tune-in.trade</a>
+        <div v-if="authMode === 'both'" class="flex items-center gap-3 text-xs text-muted"><span class="h-px flex-1 bg-line" />atau dengan password<span class="h-px flex-1 bg-line" /></div>
+        <template v-if="authMode !== 'central'">
           <label class="block">
-            <span class="mb-1 block text-xs text-muted">Password</span>
-            <input v-model="password" type="password" class="w-full" autocomplete="current-password" required />
+            <span class="mb-1 block text-xs text-muted">Email</span>
+            <input v-model="email" type="email" class="w-full" autocomplete="email" required />
           </label>
-          <RouterLink v-if="passwordResetEnabled" :to="{ name: 'forgot-password', query: email ? { email } : {} }" class="mt-1.5 block text-right text-xs text-brand hover:underline">Lupa password?</RouterLink>
-        </div>
+          <div>
+            <label class="block">
+              <span class="mb-1 block text-xs text-muted">Password</span>
+              <input v-model="password" type="password" class="w-full" autocomplete="current-password" required />
+            </label>
+            <RouterLink v-if="passwordResetEnabled" :to="{ name: 'forgot-password', query: email ? { email } : {} }" class="mt-1.5 block text-right text-xs text-brand hover:underline">Lupa password?</RouterLink>
+          </div>
+        </template>
       </template>
       <template v-else>
         <p class="text-sm text-muted">
@@ -120,12 +144,13 @@ function toggleRecovery() {
         <p v-if="resetSent" class="rounded-lg bg-up/10 px-3 py-2.5 text-xs text-up">{{ resetSent }} Buka link di email, lalu masuk lagi.</p>
       </template>
       <p v-if="error" class="text-sm text-down">{{ error }}</p>
-      <button class="btn-primary w-full" :disabled="loading || (twoFactor && !useRecovery && code.length < 6)">{{ loading ? 'Memeriksa…' : twoFactor ? 'Verifikasi' : 'Masuk' }}</button>
+      <p v-else-if="accountError && !twoFactor" class="text-sm text-down">{{ accountError }}</p>
+      <button v-if="authMode !== 'central' || twoFactor" class="btn-primary w-full" :disabled="loading || (twoFactor && !useRecovery && code.length < 6)">{{ loading ? 'Memeriksa…' : twoFactor ? 'Verifikasi' : 'Masuk' }}</button>
       <p v-if="twoFactor && passwordResetEnabled && !resetSent" class="text-center text-xs text-muted">
         Tidak bisa membuka authenticator dan kode pemulihan hilang?
         <button type="button" class="text-brand hover:underline" :disabled="requestingReset" @click="requestTwoFactorReset">{{ requestingReset ? 'Mengirim…' : 'Reset 2FA lewat email' }}</button>
       </p>
-      <p v-if="!twoFactor" class="text-center text-xs text-muted">Akun dibuat oleh admin. Belum punya akun? Hubungi admin.</p>
+      <p v-if="!twoFactor && authMode !== 'central'" class="text-center text-xs text-muted">Akun dibuat oleh admin. Belum punya akun? Hubungi admin.</p>
     </form>
   </div>
 </template>

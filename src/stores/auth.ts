@@ -5,6 +5,8 @@ import type { User } from '@/lib/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
+  /** Set by logout, so a login page in "tune-in.trade only" mode does not send the user straight back in. */
+  const loggedOut = ref(false)
   const checked = ref(false)
 
   async function fetchUser(): Promise<User | null> {
@@ -37,7 +39,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function logout(): Promise<void> {
     await api.post('/auth/logout')
     user.value = null
+    loggedOut.value = true
   }
 
-  return { user, checked, fetchUser, login, completeTwoFactor, logout }
+  return { user, checked, fetchUser, login, completeTwoFactor, logout, loggedOut }
 })

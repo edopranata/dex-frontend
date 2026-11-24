@@ -1,6 +1,6 @@
 # DEX Simulator — Frontend
 
-Vue 3 + Vite + Tailwind CSS 4 + Pinia + Vue Router + lightweight-charts. Backend, deployment, dan dokumentasi lengkap ada di [dex-backend](https://github.com/edopranata/dex-backend).
+Vue 3 + Vite + Tailwind CSS 4 + Pinia + Vue Router + KLineChart (grafik candle) + lightweight-charts (grafik lain). Backend, deployment, dan dokumentasi lengkap ada di [dex-backend](https://github.com/edopranata/dex-backend).
 
 Clone kedua repository berdampingan:
 

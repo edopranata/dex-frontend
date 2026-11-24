@@ -245,8 +245,8 @@ const statusClass: Record<string, string> = { filled: 'text-up', pending: 'text-
               </li>
             </ol>
           </div>
-          <div class="h-[320px] sm:h-[420px]">
-            <CandleChart v-if="candles.length" :candles="candles" :series-key="candlesKey" :levels="chartLevels" :markers="lotMarkers" :interval-seconds="candleSeconds" :live-price="chartLivePrice" :live-price-at="token.price_updated_at" />
+          <div class="h-[380px] sm:h-[480px]">
+            <CandleChart v-if="candles.length" :candles="candles" :series-key="candlesKey" :drawing-key="`dex:token-${props.id}`" :levels="chartLevels" :markers="lotMarkers" :interval-seconds="candleSeconds" :live-price="chartLivePrice" :live-price-at="token.price_updated_at" />
             <EmptyState v-else title="Data candle belum tersedia" description="Candle diambil dari GeckoTerminal setiap 15 menit. Token baru butuh 1–3 menit." />
           </div>
         </section>

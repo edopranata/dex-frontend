@@ -9,6 +9,7 @@ import FeedMenu from '@/components/FeedMenu.vue'
 import FeedNotices from '@/components/FeedNotices.vue'
 import FeedTicker from '@/components/FeedTicker.vue'
 import InstallButton from '@/components/InstallButton.vue'
+import SidebarToggle from '@/components/SidebarToggle.vue'
 import SyncStatus from '@/components/SyncStatus.vue'
 import ThemeMenu from '@/components/ThemeMenu.vue'
 import Toaster from '@/components/Toaster.vue'
@@ -17,6 +18,7 @@ import { changeClass, pct, usd } from '@/lib/format'
 import { adminNav as adminArea, type NavItem, tradingNav as trading } from '@/lib/navigation'
 import { useAuthStore } from '@/stores/auth'
 import { useConfirmStore } from '@/stores/confirm'
+import { useSidebar } from '@/composables/useSidebar'
 import { useFeedStore } from '@/stores/feed'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useRefreshStore } from '@/stores/refresh'
@@ -30,6 +32,10 @@ const route = useRoute()
 const refresh = useRefreshStore()
 const menuOpen = ref(false)
 const searchOpen = ref(false)
+const { mode: sidebar } = useSidebar()
+/** Icons only on desktop; the phone menu always shows the labels (every mini rule is lg: only). */
+const mini = computed(() => sidebar.value === 'mini')
+const sidebarWidth = { full: 'lg:w-64 3xl:w-72', mini: 'lg:w-16', hide: 'lg:hidden' }
 
 usePolling(feed.poll, 30000)
 
@@ -105,13 +111,13 @@ onBeforeUnmount(() => {
     </Transition>
 
     <aside
-      class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-line bg-panel transition-transform duration-300 ease-(--ease-out-soft) lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:max-w-none lg:translate-x-0 3xl:w-72"
-      :class="menuOpen ? 'translate-x-0 shadow-2xl shadow-black/60' : '-translate-x-full'"
+      class="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-line bg-panel transition-transform duration-300 ease-(--ease-out-soft) lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0"
+      :class="[menuOpen ? 'translate-x-0 shadow-2xl shadow-black/60' : '-translate-x-full', sidebarWidth[sidebar]]"
     >
-      <div class="flex h-14 shrink-0 items-center gap-2 px-4">
-        <RouterLink to="/" class="group flex items-center gap-2 font-semibold">
+      <div class="flex h-14 shrink-0 items-center gap-2 px-4" :class="mini ? 'lg:justify-center lg:px-0' : ''">
+        <RouterLink to="/" class="group flex items-center gap-2 font-semibold" :title="mini ? 'DEX Simulator' : undefined">
           <img src="/favicon.svg" alt="" class="h-6 w-6 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-[-8deg]" />
-          <span>DEX Simulator</span>
+          <span :class="mini ? 'lg:hidden' : ''">DEX Simulator</span>
         </RouterLink>
         <button class="btn-ghost ml-auto p-1.5 lg:hidden" aria-label="Tutup menu" @click="menuOpen = false">
           <AppIcon name="close" class="h-5 w-5" />
@@ -119,7 +125,7 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Portfolio snapshot: stays put while only the menu below scrolls -->
-      <RouterLink to="/portfolio" class="group block shrink-0 border-y border-line px-4 py-3 transition-colors hover:bg-panel-2/40" title="Buka portofolio">
+      <RouterLink to="/portfolio" class="group block shrink-0 border-y border-line px-4 py-3 transition-colors hover:bg-panel-2/40" :class="mini ? 'lg:hidden' : ''" title="Buka portofolio">
         <template v-if="portfolio.summary">
           <div class="flex items-baseline justify-between gap-2">
             <p class="text-[11px] text-muted">Ekuitas</p>
@@ -166,45 +172,47 @@ onBeforeUnmount(() => {
         </div>
       </RouterLink>
 
-      <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
+      <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3" :class="mini ? 'lg:px-2' : ''">
         <nav class="space-y-0.5">
           <RouterLink
             v-for="item in trading"
             :key="item.to"
             :to="item.to"
             class="nav-item"
-            :class="isActive(item) ? 'nav-item-active' : ''"
+            :class="[isActive(item) ? 'nav-item-active' : '', mini ? 'lg:justify-center lg:px-0' : '']"
+            :title="mini ? item.label : undefined"
           >
             <AppIcon :name="item.icon" class="h-[18px] w-[18px] shrink-0" />
-            {{ item.label }}
+            <span :class="mini ? 'lg:hidden' : ''">{{ item.label }}</span>
           </RouterLink>
         </nav>
 
         <template v-if="auth.user?.is_admin">
-          <p class="mt-5 mb-1 px-3 text-[10px] font-semibold tracking-wider text-muted uppercase">Admin area</p>
+          <p class="mt-5 mb-1 px-3 text-[10px] font-semibold tracking-wider text-muted uppercase" :class="mini ? 'lg:hidden' : ''">Admin area</p>
+          <div v-if="mini" class="my-3 hidden border-t border-line lg:block" />
           <nav class="space-y-0.5">
             <template v-for="item in adminArea" :key="item.to">
-              <a v-if="item.external" :href="item.to" target="_blank" rel="noopener" class="nav-item" title="Dashboard queue Laravel Horizon (tab baru)">
+              <a v-if="item.external" :href="item.to" target="_blank" rel="noopener" class="nav-item" :class="mini ? 'lg:justify-center lg:px-0' : ''" title="Dashboard queue Laravel Horizon (tab baru)">
                 <AppIcon :name="item.icon" class="h-[18px] w-[18px] shrink-0" />
-                {{ item.label }}
-                <span class="ml-auto text-xs" aria-hidden="true">↗</span>
+                <span :class="mini ? 'lg:hidden' : ''">{{ item.label }}</span>
+                <span class="ml-auto text-xs" :class="mini ? 'lg:hidden' : ''" aria-hidden="true">↗</span>
               </a>
-              <RouterLink v-else :to="item.to" class="nav-item" :class="isActive(item) ? 'nav-item-active' : ''">
+              <RouterLink v-else :to="item.to" class="nav-item" :class="[isActive(item) ? 'nav-item-active' : '', mini ? 'lg:justify-center lg:px-0' : '']" :title="mini ? item.label : undefined">
                 <AppIcon :name="item.icon" class="h-[18px] w-[18px] shrink-0" />
-                {{ item.label }}
+                <span :class="mini ? 'lg:hidden' : ''">{{ item.label }}</span>
               </RouterLink>
             </template>
           </nav>
         </template>
       </div>
 
-      <AppSwitcher current="dex" />
+      <AppSwitcher current="dex" :class="mini ? 'lg:hidden' : ''" />
 
       <!-- User -->
-      <div class="flex shrink-0 items-center gap-2 border-t border-line p-3">
+      <div class="flex shrink-0 items-center gap-2 border-t border-line p-3" :class="mini ? 'lg:flex-col lg:px-1' : ''">
         <RouterLink to="/profile" class="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1.5 transition-colors hover:bg-panel-2" title="Profil & pengaturan">
           <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand/20 text-sm font-semibold text-brand">{{ initials }}</span>
-          <span class="min-w-0">
+          <span class="min-w-0" :class="mini ? 'lg:hidden' : ''">
             <span class="block truncate text-sm font-medium">{{ auth.user?.name }}</span>
             <span class="block truncate text-[11px] text-muted">{{ auth.user?.email }}</span>
             <span class="mt-0.5 flex gap-1">
@@ -227,7 +235,8 @@ onBeforeUnmount(() => {
           <button class="icon-btn h-9 w-9 lg:hidden" :aria-expanded="menuOpen" aria-label="Buka menu" @click="menuOpen = true">
             <AppIcon name="menu" class="h-5 w-5" />
           </button>
-          <RouterLink to="/" class="flex shrink-0 items-center gap-2 font-semibold lg:hidden" aria-label="DEX Simulator">
+          <SidebarToggle />
+          <RouterLink to="/" class="flex shrink-0 items-center gap-2 font-semibold" :class="sidebar === 'hide' ? '' : 'lg:hidden'" aria-label="DEX Simulator">
             <img src="/favicon.svg" alt="" class="h-7 w-7" />
             <span class="hidden sm:inline">DEX Simulator</span>
           </RouterLink>
@@ -257,7 +266,7 @@ onBeforeUnmount(() => {
             <FeedMenu />
             <ThemeMenu />
             <InstallButton />
-            <RouterLink v-if="portfolio.summary" to="/portfolio" class="hidden border-l border-line pl-3 text-right text-xs leading-tight sm:block lg:hidden">
+            <RouterLink v-if="portfolio.summary" to="/portfolio" class="hidden border-l border-line pl-3 text-right text-xs leading-tight sm:block" :class="sidebar === 'full' ? 'lg:hidden' : ''">
               <AnimatedNumber class="num block font-semibold" :value="portfolio.summary.equity_usd" :format="usd" />
               <span class="num" :class="changeClass(portfolio.summary.total_pnl)">{{ pct(portfolio.summary.total_pnl_pct) }}</span>
             </RouterLink>

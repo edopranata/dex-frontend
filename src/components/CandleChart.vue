@@ -33,6 +33,9 @@ const props = defineProps<{
 
 const STORAGE_INDICATORS = 'chart:indicators:v1'
 const STORAGE_DRAWINGS = 'chart:drawings:v1:'
+const STORAGE_HEIGHT = 'chart:height:v1'
+const MIN_HEIGHT = 300
+const MAX_HEIGHT = 1600
 const MAIN_PANE = 'candle_pane'
 const MAIN_INDICATORS = ['MA', 'EMA', 'SMA', 'BOLL', 'SAR', 'BBI', 'AVP']
 const SUB_INDICATORS = ['VOL', 'MACD', 'RSI', 'KDJ', 'OBV', 'CCI', 'DMI', 'WR', 'ROC', 'MTM', 'TRIX', 'AO', 'PSY', 'BIAS', 'BRAR', 'CR', 'DMA', 'EMV', 'PVT', 'VR']
@@ -165,6 +168,51 @@ let levelsKey = ''
 let quiet = false
 
 const menu = ref<'' | 'indicators'>('')
+
+/** The card's height, dragged from the handle under the chart and kept in this browser (one height for every chart). */
+function defaultHeight(): number {
+  return window.innerWidth < 640 ? 400 : 520
+}
+function savedHeight(): number {
+  try {
+    const value = Number(localStorage.getItem(STORAGE_HEIGHT))
+    if (value >= MIN_HEIGHT && value <= MAX_HEIGHT) return value
+  } catch {
+    // Blocked storage: the default height.
+  }
+  return defaultHeight()
+}
+const height = ref(savedHeight())
+let dragFrom: { y: number; height: number } | null = null
+
+function saveHeight() {
+  try {
+    localStorage.setItem(STORAGE_HEIGHT, String(height.value))
+  } catch {
+    // Not kept in this browser.
+  }
+}
+
+function startResize(event: PointerEvent) {
+  dragFrom = { y: event.clientY, height: height.value }
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+}
+
+function moveResize(event: PointerEvent) {
+  if (!dragFrom) return
+  height.value = Math.round(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, dragFrom.height + event.clientY - dragFrom.y)))
+}
+
+function endResize() {
+  if (!dragFrom) return
+  dragFrom = null
+  saveHeight()
+}
+
+function resetHeight() {
+  height.value = defaultHeight()
+  saveHeight()
+}
 /** The drawing picked by a click or tap, for the remove button (no right click on a phone). */
 const selected = ref('')
 /** Under 640px the OHLC legends show only while the chart is touched, so they do not cover the candles. */
@@ -566,7 +614,7 @@ watch(() => [props.livePrice, props.livePriceAt], applyLivePrice)
 </script>
 
 <template>
-  <div class="relative flex h-full w-full flex-col">
+  <div class="relative flex w-full flex-col" :style="{ height: `${height}px` }">
     <div class="relative flex items-center gap-1 overflow-x-auto border-b border-line pb-1.5 text-xs">
       <button class="shrink-0 rounded-lg px-2 py-1 text-muted hover:text-text" :class="menu === 'indicators' ? 'bg-brand/15 text-brand' : ''" @click="menu = menu === 'indicators' ? '' : 'indicators'">
         Indikator ({{ chosen.main.length + chosen.sub.length }})
@@ -626,6 +674,20 @@ watch(() => [props.livePrice, props.livePriceAt], applyLivePrice)
     </div>
 
     <div ref="container" class="min-h-0 w-full flex-1" />
-    <p class="mt-1 text-[11px] text-muted">Pilih alat lalu klik titik di grafik. Gambar bisa digeser; klik kanan (atau pilih lalu Hapus terpilih) untuk menghapus satu gambar. Gambar dan indikator tersimpan di browser ini.</p>
+    <div
+      class="group flex h-4 shrink-0 cursor-ns-resize touch-none items-center justify-center"
+      title="Tarik untuk mengubah tinggi grafik; klik dua kali untuk kembali ke tinggi awal"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Ubah tinggi grafik"
+      @pointerdown="startResize"
+      @pointermove="moveResize"
+      @pointerup="endResize"
+      @pointercancel="endResize"
+      @dblclick="resetHeight"
+    >
+      <span class="h-1 w-12 rounded-full bg-line transition-colors group-hover:bg-brand/60" />
+    </div>
+    <p class="mt-1 text-[11px] text-muted">Pilih alat lalu klik titik di grafik. Gambar bisa digeser; klik kanan (atau pilih lalu Hapus terpilih) untuk menghapus satu gambar. Tarik garis di bawah grafik untuk mengubah tingginya. Gambar, indikator, dan tinggi tersimpan di browser ini.</p>
   </div>
 </template>

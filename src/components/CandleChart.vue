@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { dispose, init, registerLocale, registerOverlay, type Chart, type KLineData, type OverlayEvent } from 'klinecharts'
+import { dispose, init, registerIndicator, registerLocale, registerOverlay, type Chart, type KLineData, type OverlayEvent } from 'klinecharts'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { price as formatPrice } from '@/lib/format'
 import { liveCandle } from '@/lib/liveCandle'
+import { willy, type WillyPoint } from '@/lib/willy'
 import type { Candle, ChartMarker, Levels } from '@/lib/types'
 import { themeColor, useThemeStore } from '@/stores/theme'
 
@@ -38,10 +39,10 @@ const MIN_HEIGHT = 300
 const MAX_HEIGHT = 1600
 const MAIN_PANE = 'candle_pane'
 const MAIN_INDICATORS = ['MA', 'EMA', 'SMA', 'BOLL', 'SAR', 'BBI', 'AVP']
-const SUB_INDICATORS = ['VOL', 'MACD', 'RSI', 'KDJ', 'OBV', 'CCI', 'DMI', 'WR', 'ROC', 'MTM', 'TRIX', 'AO', 'PSY', 'BIAS', 'BRAR', 'CR', 'DMA', 'EMV', 'PVT', 'VR']
+const SUB_INDICATORS = ['VOL', 'MACD', 'RSI', 'KDJ', 'OBV', 'CCI', 'DMI', 'WR', 'WILLY', 'ROC', 'MTM', 'TRIX', 'AO', 'PSY', 'BIAS', 'BRAR', 'CR', 'DMA', 'EMV', 'PVT', 'VR']
 const INDICATOR_NAMES: Record<string, string> = {
   MA: 'Moving average', EMA: 'Exponential MA', SMA: 'SMA (rata-rata berbobot)', BOLL: 'Bollinger Bands', SAR: 'Parabolic SAR', BBI: 'Bull and bear index', AVP: 'Harga rata-rata',
-  VOL: 'Volume', MACD: 'MACD', RSI: 'RSI', KDJ: 'KDJ (stochastic)', OBV: 'On balance volume', CCI: 'Commodity channel index', DMI: 'DMI / ADX', WR: 'Williams %R',
+  VOL: 'Volume', MACD: 'MACD', RSI: 'RSI', KDJ: 'KDJ (stochastic)', OBV: 'On balance volume', CCI: 'Commodity channel index', DMI: 'DMI / ADX', WR: 'Williams %R', WILLY: 'Willy: WR + EMA (TradingView)',
   ROC: 'Rate of change', MTM: 'Momentum', TRIX: 'TRIX', AO: 'Awesome oscillator', PSY: 'Psychological line', BIAS: 'Bias', BRAR: 'BRAR', CR: 'CR', DMA: 'DMA', EMV: 'Ease of movement', PVT: 'Price volume trend', VR: 'Volume ratio',
 }
 const TOOLS: { name: string; label: string; icon: string; text?: boolean }[] = [
@@ -68,6 +69,38 @@ registerLocale('id-ID', {
 })
 
 const DRAW_BLUE = '#3b82f6'
+
+/** "The Willy" (TradingView): Williams %R with an EMA of it, and dashed lines at -20 and -80. */
+registerIndicator<WillyPoint, number>({
+  name: 'WILLY',
+  shortName: 'Willy',
+  calcParams: [21, 13],
+  precision: 2,
+  minValue: -100,
+  maxValue: 0,
+  figures: [
+    { key: 'wr', title: 'WR: ', type: 'line', styles: () => ({ color: '#eab308' }) },
+    { key: 'ema', title: 'EMA: ', type: 'line', styles: () => ({ color: '#22d3ee' }) },
+  ],
+  calc: (dataList, indicator) => willy(dataList, indicator.calcParams[0] ?? 21, indicator.calcParams[1] ?? 13),
+  draw: ({ ctx, bounding, yAxis }) => {
+    ctx.save()
+    ctx.strokeStyle = themeColor('muted')
+    ctx.globalAlpha = 0.6
+    ctx.setLineDash([4, 4])
+    ctx.lineWidth = 1
+    for (const level of [-20, -80]) {
+      const y = Math.round(yAxis.convertToPixel(level)) + 0.5
+      ctx.beginPath()
+      ctx.moveTo(0, y)
+      ctx.lineTo(bounding.width, y)
+      ctx.stroke()
+    }
+    ctx.restore()
+    // false: KLineChart still draws the two lines.
+    return false
+  },
+})
 
 /** A box between two points (KLineChart has the figure, not the drawing tool). */
 registerOverlay({
@@ -417,7 +450,7 @@ function applyIndicators() {
 
 function defaultParams(name: string): string {
   // KLineChart's own RSI default is 6, 12, 24; the exchanges show 14.
-  return ({ EMA: '20,50', RSI: '14' } as Record<string, string>)[name] ?? ''
+  return ({ EMA: '20,50', RSI: '14', WILLY: '21,13' } as Record<string, string>)[name] ?? ''
 }
 
 function toggleIndicator(group: 'main' | 'sub', name: string) {

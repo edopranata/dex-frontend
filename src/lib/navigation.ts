@@ -14,6 +14,7 @@ export const tradingNav: NavItem[] = [
   { to: '/', label: 'Ringkasan', icon: 'home', exact: true },
   { to: '/markets', label: 'Market', icon: 'market' },
   { to: '/discover', label: 'Temukan', icon: 'discover' },
+  { to: '/new-pairs', label: 'Token Baru', icon: 'spark' },
   { to: '/signals', label: 'Sinyal', icon: 'signals' },
   { to: '/reports', label: 'Laporan', icon: 'report' },
   { to: '/tp-coins', label: 'Koin kena TP', icon: 'layers' },

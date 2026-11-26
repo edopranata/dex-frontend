@@ -63,7 +63,7 @@ onMounted(more)
 
 // The holder share is the metric of the v6 holder pair; for Buys the metric is Fear & Greed, already shown.
 const holders = props.group === 'top10_holders' || props.group === 'accepted'
-const scored = props.group === 'high_score'
+const scored = props.group === 'high_score' || props.group === 'first_buy'
 
 const statusLabel: Record<string, string> = {
   not_entered: 'Tidak entry',

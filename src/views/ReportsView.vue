@@ -168,6 +168,7 @@ const shadowRuleLabel: Record<string, string> = {
   top10_holders: 'Ditahan aturan holder',
   high_score: 'Strong Buy skor 77+ (tidak jadi sinyal sejak v7)',
   first_buy: 'Strong Buy pertama setelah analisa bukan Buy (tidak jadi sinyal sejak v8)',
+  v7_rule: 'Aturan v7 berjalan bersamaan (semua Strong Buy skor < 77, keluar saat analisa tidak lagi Buy; sejak 26 Nov)',
   buy_btc_rising: 'Buy (bayangan) saat tren 4 jam BTC naik',
   buy_btc_not_rising: 'Buy (bayangan) saat tren 4 jam BTC tidak naik',
 }

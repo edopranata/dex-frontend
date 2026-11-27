@@ -15,14 +15,43 @@ interface StrategyRow {
   avg_net_pct: number | null
   median_net_pct: number | null
   win_rate: number | null
+  rug_rate: number | null
   profit_factor: number | null
   total_net_pct: number | null
 }
 
+interface ChainRow {
+  strategy: string
+  strategy_label: string
+  chain_id: string
+  closed: number
+  avg_net_pct: number | null
+  median_net_pct: number | null
+  win_rate: number | null
+  rug_rate: number | null
+}
+
+interface ChainPools {
+  chain_id: string
+  total: number
+  done: number
+  liquidity_pulled: number
+  liquidity_pulled_pct: number | null
+}
+
 interface Summary {
   strategies: StrategyRow[]
-  pairs: { tracking: number; total: number; last_24h: number; by_source: Record<string, number>; by_chain: Record<string, number>; first_seen_at: string | null }
-  rules: { stop_pct: number; take_profit_pct: number[]; max_hold_hours: number; round_trip_cost_pct: number; min_liquidity_usd: number; max_tracked: number }
+  by_chain: ChainRow[]
+  pairs: {
+    tracking: number
+    total: number
+    last_24h: number
+    by_source: Record<string, number>
+    by_chain: Record<string, number>
+    chains: ChainPools[]
+    first_seen_at: string | null
+  }
+  rules: { stop_pct: number; take_profit_pct: number[]; max_hold_hours: number; round_trip_cost_pct: number; min_liquidity_usd: number; max_tracked: number; rug_loss_pct: number }
 }
 
 interface Pool {
@@ -107,6 +136,21 @@ const exitLabel: Record<string, string> = {
   waktu: '24 jam',
   likuiditas: 'Likuiditas hilang',
   tanpa_data: 'Data hilang',
+}
+
+const chainStrategy = ref('first_seen')
+const chainStrategyOptions = computed<SelectOption<string>[]>(() =>
+  (summary.value?.strategies ?? []).filter((s) => s.closed > 0).map((s) => ({ value: s.key, label: s.label })),
+)
+const chainRows = computed(() => (summary.value?.by_chain ?? []).filter((r) => r.strategy === chainStrategy.value))
+
+function rate(value: number | null): string {
+  return value === null ? '–' : `${num(value, 0)}%`
+}
+
+function rugClass(value: number | null): string {
+  if (value === null) return ''
+  return value >= 50 ? 'text-down' : value >= 20 ? 'text-warn' : ''
 }
 
 const chainOptions = computed<SelectOption<string>[]>(() => [
@@ -225,7 +269,8 @@ function security(p: Pool): { text: string; cls: string } {
           <thead>
             <tr>
               <th>Strategi</th><th class="text-right!">Selesai</th><th class="text-right!">Terbuka</th><th class="text-right!">Rata-rata</th>
-              <th class="text-right!">Median</th><th class="text-right!">Menang</th><th class="text-right!">PF</th><th class="text-right!">Total</th>
+              <th class="text-right!">Median</th><th class="text-right!">Menang</th><th class="text-right!">Rug</th><th class="text-right!">PF</th>
+              <th class="text-right!">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -235,13 +280,63 @@ function security(p: Pool): { text: string; cls: string } {
               <td class="num text-right text-muted">{{ s.open }}</td>
               <td class="num text-right" :class="changeClass(s.avg_net_pct)">{{ signed(s.avg_net_pct) }}</td>
               <td class="num text-right" :class="changeClass(s.median_net_pct)">{{ signed(s.median_net_pct) }}</td>
-              <td class="num text-right">{{ s.win_rate === null ? '–' : `${num(s.win_rate, 0)}%` }}</td>
+              <td class="num text-right">{{ rate(s.win_rate) }}</td>
+              <td class="num text-right" :class="rugClass(s.rug_rate)">{{ rate(s.rug_rate) }}</td>
               <td class="num text-right">{{ num(s.profit_factor) }}</td>
               <td class="num text-right" :class="changeClass(s.total_net_pct)">{{ signed(s.total_net_pct) }}</td>
             </tr>
           </tbody>
         </table>
-        <p class="px-4 pb-3 text-[11px] text-muted">Persen per trade, sudah dikurangi biaya. Sampel kecil mudah berubah oleh satu token; tunggu sekitar 200 trade per strategi sebelum menilai.</p>
+        <p class="px-4 pb-3 text-[11px] text-muted">Persen per trade, sudah dikurangi biaya. Sampel kecil mudah berubah oleh satu token; tunggu sekitar 200 trade per strategi sebelum menilai.
+          Rug = trade yang rugi {{ summary.rules.rug_loss_pct }}% atau lebih: harga jatuh di antara dua sampel satu menit, jadi stop tidak sempat terisi.
+        </p>
+      </section>
+
+      <section class="card overflow-x-auto">
+        <div class="flex flex-wrap items-center gap-2 p-4 pb-2">
+          <h2 class="card-title mr-auto">Per jaringan</h2>
+          <AppSelect v-model="chainStrategy" :options="chainStrategyOptions" aria-label="Strategi per jaringan" />
+        </div>
+        <table v-if="chainRows.length" class="table">
+          <thead>
+            <tr>
+              <th>Jaringan</th><th class="text-right!">Selesai</th><th class="text-right!">Rata-rata</th><th class="text-right!">Median</th>
+              <th class="text-right!">Menang</th><th class="text-right!">Rug</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in chainRows" :key="r.chain_id">
+              <td class="font-medium">{{ r.chain_id }}</td>
+              <td class="num text-right">{{ r.closed }}</td>
+              <td class="num text-right" :class="changeClass(r.avg_net_pct)">{{ signed(r.avg_net_pct) }}</td>
+              <td class="num text-right" :class="changeClass(r.median_net_pct)">{{ signed(r.median_net_pct) }}</td>
+              <td class="num text-right">{{ rate(r.win_rate) }}</td>
+              <td class="num text-right" :class="rugClass(r.rug_rate)">{{ rate(r.rug_rate) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <EmptyState v-else title="Belum ada trade selesai untuk strategi ini" />
+        <h3 class="px-4 pt-3 text-xs font-semibold text-muted">Pool per jaringan</h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Jaringan</th><th class="text-right!">Tercatat</th><th class="text-right!">Selesai</th><th class="text-right!">Likuiditas ditarik</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in summary.pairs.chains" :key="c.chain_id">
+              <td class="font-medium">{{ c.chain_id }}</td>
+              <td class="num text-right">{{ c.total }}</td>
+              <td class="num text-right">{{ c.done }}</td>
+              <td class="num text-right" :class="rugClass(c.liquidity_pulled_pct)">
+                {{ c.liquidity_pulled }} <span class="text-muted">({{ rate(c.liquidity_pulled_pct) }})</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="px-4 pb-3 text-[11px] text-muted">
+          Likuiditas ditarik = pool yang berhenti dipantau karena likuiditasnya tinggal di bawah 20% dari saat pertama terlihat, dihitung dari pool yang sudah selesai.
+        </p>
       </section>
 
       <section class="card">

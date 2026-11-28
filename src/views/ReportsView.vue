@@ -361,7 +361,7 @@ const shadowRuleLabel: Record<string, string> = {
                 <td class="num text-right" :class="h.gaps ? 'text-warn' : 'text-muted'">{{ h.gaps ? `${h.gaps} (${r(h.gap_r ?? 0)})` : (h.gaps ?? '–') }}</td>
               </tr>
               <tr v-if="openGroup === h.rule">
-                <td colspan="9" class="bg-panel-2/40 p-0"><ShadowSignalList :group="h.rule" /></td>
+                <td colspan="9" class="max-w-0 bg-panel-2/40 p-0"><ShadowSignalList :group="h.rule" /></td>
               </tr>
             </template>
           </tbody>

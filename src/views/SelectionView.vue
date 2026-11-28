@@ -38,7 +38,7 @@ function number(value: number, digits: number): string {
 }
 
 function r(value: number | null): string {
-  return value === null ? '–' : `${value > 0 ? '+' : ''}${value.toFixed(2)}R`
+  return value === null ? '–' : `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(2).replace('.', ',')}R`
 }
 
 function rate(value: number | null): string {

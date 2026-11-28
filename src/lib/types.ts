@@ -440,10 +440,74 @@ export interface SelectionRow {
   r_trades: number
   drawdown_pct: number
   all_versions: { closed: number; win_rate: number | null; avg_r: number | null }
+  account_started_at: string | null
+}
+
+/** One strategy account from FutureSim against the selection limits. */
+export interface StrategySelectionRow {
+  key: string
+  label: string
+  kind: StrategyKind
+  status: 'active' | 'failed' | 'insufficient'
+  reasons: string[]
+  closed: number
+  open: number
+  pending: number
+  wins: number
+  even: number
+  losses: number
+  win_rate: number | null
+  avg_r: number | null
+  r_trades: number
+  avg_pct: number | null
+  drawdown_pct: number
+  started_at: string
+}
+
+export type StrategyKind = 'main' | 'shadow' | 'experiment' | 'benchmark'
+
+/** GET /api/reports/strategy-accounts */
+export interface StrategyAccountSummary {
+  key: string
+  label: string
+  kind: StrategyKind
+  is_active: boolean
+  equity: number
+  return_pct: number
+  cash: number
+  fees_paid: number
+  open: number
+  closed: number
+  wins: number
+  net_pnl: number
+  started_at: string
+}
+
+/** GET /api/reports/strategy-accounts/{key} */
+export interface StrategyPositionRow {
+  id: number
+  token: { symbol: string; slug: string | null; chain: string }
+  status: 'pending' | 'open' | 'closed' | 'cancelled'
+  entry_price: number
+  stop: number | null
+  initial_stop: number | null
+  take_profit: number | null
+  amount_usd: number
+  price: number | null
+  unrealized_usd: number | null
+  net_pnl: number
+  r: number | null
+  adds: number | null
+  entry_reason: string
+  exit_reason: string | null
+  opened_at: string
+  closed_at: string | null
 }
 
 export interface Selection {
   limits: { min_trades: number; min_win_rate: number; min_avg_r: number; max_drawdown_pct: number }
   version: string
+  version_started_at: string | null
   accounts: SelectionRow[]
+  strategy_accounts: StrategySelectionRow[]
 }

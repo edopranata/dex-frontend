@@ -423,3 +423,27 @@ export interface LotDetail {
   stop: number | null
   fills: { id: number; at: string | null; side: 'buy' | 'sell'; type: string; price: number; quantity: number; note: string | null }[]
 }
+
+/** One auto-follow account against the selection limits (GET /api/reports/selection). */
+export interface SelectionRow {
+  key: string
+  label: string
+  status: 'active' | 'failed' | 'insufficient'
+  reasons: string[]
+  closed: number
+  open: number
+  wins: number
+  even: number
+  losses: number
+  win_rate: number | null
+  avg_r: number | null
+  r_trades: number
+  drawdown_pct: number
+  all_versions: { closed: number; win_rate: number | null; avg_r: number | null }
+}
+
+export interface Selection {
+  limits: { min_trades: number; min_win_rate: number; min_avg_r: number; max_drawdown_pct: number }
+  version: string
+  accounts: SelectionRow[]
+}

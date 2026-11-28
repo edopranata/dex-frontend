@@ -17,6 +17,7 @@ export const tradingNav: NavItem[] = [
   { to: '/new-pairs', label: 'Token Baru', icon: 'spark' },
   { to: '/signals', label: 'Sinyal', icon: 'signals' },
   { to: '/reports', label: 'Laporan', icon: 'report' },
+  { to: '/selection', label: 'Seleksi akun', icon: 'shield' },
   { to: '/tp-coins', label: 'Koin kena TP', icon: 'layers' },
   { to: '/whales', label: 'Whale Tracker', icon: 'whale' },
   { to: '/wallets', label: 'Wallet', icon: 'wallet' },

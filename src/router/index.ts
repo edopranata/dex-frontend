@@ -33,6 +33,7 @@ const router = createRouter({
         { path: 'signals', name: 'signals', component: () => import('@/views/SignalsView.vue'), meta: { title: 'Sinyal' } },
         { path: 'tp-coins', name: 'tp-coins', component: () => import('@/views/TpCoinsView.vue'), meta: { title: 'Koin kena TP' } },
         { path: 'new-pairs', name: 'new-pairs', component: () => import('@/views/NewPairsView.vue'), meta: { title: 'Token Baru' } },
+        { path: 'selection', name: 'selection', component: () => import('@/views/SelectionView.vue'), meta: { title: 'Seleksi akun' } },
         { path: 'reports', name: 'reports', component: () => import('@/views/ReportsView.vue'), meta: { title: 'Laporan' } },
         { path: 'whales', name: 'whales', component: () => import('@/views/WhalesView.vue'), meta: { title: 'Whale Tracker' } },
         { path: 'wallets', name: 'wallets', component: () => import('@/views/WalletsView.vue'), meta: { title: 'Wallet' } },
